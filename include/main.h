@@ -23,4 +23,5 @@ class ADC_Strain_Gauge_t{
 };
 
 void delay_5ns(uint32_t duration);
+void setup_pins();
 #endif

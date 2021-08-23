@@ -6,8 +6,14 @@
 #define ADC_SCLK_PIN 1
 #define ADC_RESET 2
 #define ADC_CONV_AB 3
-#define ADC_1_DOUTB 18
-#define ADC_1_DOUTA 19
+#define SG_ADC_1_DOUTB 18
+#define SG_ADC_1_DOUTA 19
+#define SG_ADC_2_DOUTB 15
+#define SG_ADC_2_DOUTA 14
+#define G_ADC_1_DOUTB 41
+#define G_ADC_1_DOUTA 40
+#define G_ADC_2_DOUTB 16
+#define G_ADC_2_DOUTA 15
 
 #define approx_500NS 100
 #define WAIT_OUT_CONVERSION_TIME_600us 120000
@@ -40,5 +46,7 @@ void ADS8588H_reset();
 void ADC_SERVICE_ROUTINE();
 void ADS8588H_CS();
 void ADS8588H_READ_8CH();
+void convertData_Strain_Guage(int channel, ADC_Strain_Gauge_t *ADC);
+void print_data(ADC_Strain_Gauge_t *ADC);
 
 #endif

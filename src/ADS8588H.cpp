@@ -8,6 +8,7 @@ int timer1 = 0;
 int flip2 = 1;
 int where = 0;
 ADC_Strain_Gauge_t ADC_1 = {0};
+ADC_Strain_Gauge_t ADC_2 = {0};
 void ADC_SERVICE_ROUTINE()
 {
     //Begin conversion
@@ -31,26 +32,38 @@ void ADS8588H_READ_8CH()
         for(int stepping = CLK_CYCLES; stepping >= 0; stepping--)
         {
             digitalWrite(ADC_SCLK_PIN,LOW);
-            ADC_1.bit_collector |= (digitalReadFast(ADC_1_DOUTA) << stepping);
-            
+            ADC_1.bit_collector |= (digitalReadFast(SG_ADC_1_DOUTA) << stepping);
+            ADC_2.bit_collector |= (digitalReadFast(SG_ADC_2_DOUTA) << stepping);
             digitalWrite(ADC_SCLK_PIN, HIGH);
         }
-        
-        ADC_1.raw_data[channel] = ADC_1.bit_collector;
-        if(ADC_1.raw_data[channel] <= ADC_NEGATIVE_TRANSISTION_VALUE){
-            ADC_1.scaled_data[channel] = ADC_ABS_RANGE*ADC_1.raw_data[channel]/ADC_16BIT_CONVERSION_VALUE; 
-        }else{
-            ADC_1.scaled_data[channel] = ADC_ABS_RANGE*ADC_1.raw_data[channel]/ADC_16BIT_CONVERSION_VALUE - ADC_ABS_RANGE;
-        }
-        ADC_1.bit_collector = 0;
+        convertData_Strain_Guage(channel, &ADC_1);
+        convertData_Strain_Guage(channel, &ADC_2);
     }
+    print_data(&ADC_2);
     digitalWrite(ADC_CS_PIN,HIGH);
+}
 
+void print_data(ADC_Strain_Gauge_t *ADC)
+{
     Serial.printf("CH1: %f CH2: %f CH:3 %f CH4: %f CH5: %f CH:6 %f CH:7 %f CH:8 %f\n",
-    ADC_1.scaled_data[DIFF_1], ADC_1.scaled_data[DIFF_2], ADC_1.scaled_data[DIFF_3], ADC_1.scaled_data[DIFF_4], ADC_1.scaled_data[DIFF_5], ADC_1.scaled_data[DIFF_6], ADC_1.scaled_data[DIFF_7], ADC_1.scaled_data[DIFF_8]);
+    ADC->scaled_data[DIFF_1], ADC->scaled_data[DIFF_2], ADC->scaled_data[DIFF_3], ADC->scaled_data[DIFF_4], ADC->scaled_data[DIFF_5], ADC->scaled_data[DIFF_6], ADC->scaled_data[DIFF_7], ADC->scaled_data[DIFF_8]);
     // Serial.printf("CH1: %hX CH2: %hX CH:3 %hX CH4: %hX CH5: %hX CH:6 %hX CH:7 %hX CH:8 %hX \n",
     // ADC_1.raw_data[0], ADC_1.raw_data[1], ADC_1.raw_data[2], ADC_1.raw_data[3], ADC_1.raw_data[4], ADC_1.raw_data[5], ADC_1.raw_data[6], ADC_1.raw_data[7]);
+
 }
+
+void convertData_Strain_Guage(int channel, ADC_Strain_Gauge_t *ADC)
+{
+    ADC->raw_data[channel] = ADC->bit_collector;
+    // Translate raw value into float
+    if(ADC->raw_data[channel] <= ADC_NEGATIVE_TRANSISTION_VALUE){
+        ADC->scaled_data[channel] = ADC_ABS_RANGE*ADC->raw_data[channel]/ADC_16BIT_CONVERSION_VALUE; 
+    }else{
+        ADC->scaled_data[channel] = ADC_ABS_RANGE*ADC->raw_data[channel]/ADC_16BIT_CONVERSION_VALUE - ADC_ABS_RANGE;
+    }
+    ADC->bit_collector = 0;
+}
+
 void ADS8588H_CS()
 {
     delay_5ns(approx_500NS);
@@ -75,7 +88,6 @@ void ADS8588H_reset()
 }
 
 int ADC_call_back(global_t *work){
-    //work->huh = ADC.huh;
     return 0;
 }
 
