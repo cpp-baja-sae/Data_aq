@@ -12,8 +12,14 @@
 
 class global_t{
     public:
-    int huh;
-    int16_t channel_data[8];
+    int hey;
+};
+
+class ADC_Strain_Gauge_t{
+    public:
+    volatile uint16_t bit_collector;
+    int16_t raw_data[8];
+    float scaled_data[8];
 };
 
 void delay_5ns(uint32_t duration);

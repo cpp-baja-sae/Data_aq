@@ -3,7 +3,7 @@
 #include "main.h"
 
 IntervalTimer ADC_timer;
-global_t global_values ={0};
+global_t global_values = {0};
 
 int main()
 {  
@@ -11,7 +11,7 @@ int main()
   pinMode(ADC_SCLK_PIN,OUTPUT);
   pinMode(ADC_RESET,OUTPUT);
   pinMode(ADC_CONV_AB,OUTPUT);
-  pinMode(ADC_1_DOUTA ,INPUT_PULLUP);
+  pinMode(ADC_1_DOUTA ,INPUT_PULLDOWN);
   Serial.begin(115200);
   ADS8588H_init(ADC_timer);
 
