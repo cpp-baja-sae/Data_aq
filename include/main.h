@@ -3,7 +3,9 @@
 #include "unistd.h"
 #include <Arduino.h>
 
-#define heart_beat_compare_time_ms 1000
+#define TIMER_INTERVAL_1s 1000
+#define TIMER_INTERVAL_20khz 25
+#define Testing 10000
 // Pauses execution of the program for a single clock cycle
 #define DELAY_CLOCK_CYCLE __asm__("nop\n")
 // Pauses execution of the program for 3 clock cycles. Our clock runs at 600MHz,
@@ -43,6 +45,12 @@ public:
   void Heart_Beat(dumb_scheduler &heart_beating);
 };
 
+class Digital_Muxed_Data_t {
+public:
+  uint8_t mux_channel;
+};
+
 void delay_5ns(uint32_t duration);
 void setup_pins();
+void setup_digital_ISR();
 #endif
