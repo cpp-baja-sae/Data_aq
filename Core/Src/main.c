@@ -66,6 +66,8 @@ ETH_TxPacketConfig TxConfig;
 ETH_HandleTypeDef heth;
 
 SPI_HandleTypeDef hspi1;
+DMA_HandleTypeDef hdma_spi1_rx;
+DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim6;
 
@@ -84,7 +86,7 @@ const osThreadAttr_t readAdcTaskAttributes = { .name = "readAdcTask",
 		.stack_size = 128 * 4, .priority = (osPriority_t) osPriorityRealtime6, };
 osThreadId_t sdCardTaskHandle;
 const osThreadAttr_t sdCardTaskAttributes = { .name = "sdCardTask",
-		.stack_size = 128 * 4, .priority = (osPriority_t) osPriorityHigh1, };
+		.stack_size = 128 * 16, .priority = (osPriority_t) osPriorityHigh1, };
 // Used by the interrupt to determine which task should be woken up.
 int scheduleCounter;
 int initialized;
@@ -96,8 +98,9 @@ static void MX_GPIO_Init(void);
 static void MX_ETH_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
-static void MX_TIM6_Init(void);
+static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_TIM6_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -141,10 +144,12 @@ int main(void)
   MX_ETH_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_HS_USB_Init();
-  MX_TIM6_Init();
+  MX_DMA_Init();
   MX_SPI1_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim6);
+	NVIC_SetPriorityGrouping(0);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -458,6 +463,25 @@ static void MX_USB_OTG_HS_USB_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -550,7 +574,8 @@ void notifyTaskFromIrq(TaskHandle_t xTaskToNotify) {
 	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-uint16_t adcData[32] = { 0 };
+// 70 bytes, a multiple of 7 for compatibility with appendDataFrame. The first byte is a tag specifying which kind of data frame it is.
+uint16_t adcData[35] = { 1, 0 };
 
 #define ADC_PORT GPIOC
 #define ADC_CONVST_PIN GPIO_PIN_8
@@ -581,11 +606,11 @@ void requestAdcStartConverting() {
 void readDataFromAdc() {
 	HAL_GPIO_WritePin(ADC_PORT, ADC_CS_PIN, GPIO_PIN_RESET);
 	for (int channel = 0; channel < ADC_NUM_CHANNELS; channel++) {
-		adcData[channel] = 0;
+		adcData[1 + channel] = 0;
 		for (int bit = 0; bit < ADC_BITS_PER_CHANNEL; bit++) {
 			HAL_GPIO_WritePin(ADC_PORT, ADC_SCLK_PIN, GPIO_PIN_RESET);
-			adcData[channel] <<= 1;
-			adcData[channel] |=
+			adcData[1 + channel] <<= 1;
+			adcData[1 + channel] |=
 					HAL_GPIO_ReadPin(ADC_PORT, ADC_DOUTA_PIN) == GPIO_PIN_SET ?
 							1 : 0;
 			HAL_GPIO_WritePin(ADC_PORT, ADC_SCLK_PIN, GPIO_PIN_SET);
@@ -603,6 +628,7 @@ void readAdcTask(void *argument) {
 		// Wait for the interrupt to say it's our time to resume again.
 		ulTaskNotifyTake(pdTRUE, 1000);
 		readDataFromAdc();
+		appendDataFrame(&adcData[0], 70);
 	}
 }
 
@@ -674,7 +700,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		// % 400 is 100Hz
 		if (scheduleCounter % 20 == 1)
 			notifyTaskFromIrq(readAdcTaskHandle);
-		if (scheduleCounter % 400 == 2)
+		if (scheduleCounter % 40 == 2)
 			notifyTaskFromIrq(sdCardTaskHandle);
 		scheduleCounter = (scheduleCounter + 1) % (40 * 1000);
 	}
