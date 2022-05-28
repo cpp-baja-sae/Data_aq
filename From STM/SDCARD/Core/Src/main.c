@@ -25,15 +25,17 @@
 /* USER CODE BEGIN Includes */
 #include "commands.h"
 #include "stdio.h"
+#include "helpercmd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#define chunk_size 512*50
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+void WriteTime();
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -92,7 +94,13 @@ static void MX_USB_OTG_HS_USB_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+FRESULT res;
+uint32_t byteswritten, bytesread;
 
+char wtext[chunk_size]={0};
+
+char text[] = "empty place holder that needs length";
+uint8_t rtext[_MAX_SS];
 /* USER CODE END 0 */
 
 /**
@@ -102,11 +110,7 @@ static void MX_USB_OTG_HS_USB_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	FRESULT res;
-	uint32_t byteswritten, bytesread;
-	char wtext[] = "this is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 charactersthis is 512 characters\n";
-	char text[] = "empty place holder that needs length";
-	uint8_t rtext[_MAX_SS];
+	HalfKBWrite(wtext,50);
   /* USER CODE END 1 */
 
   /* Enable I-Cache---------------------------------------------------------*/
@@ -154,14 +158,14 @@ int main(void)
           else
           {
               //Open file for writing (Create)
-              if(f_open(&SDFile, "STM32.TXT", FA_OPEN_ALWAYS | FA_WRITE) != FR_OK)
+              if(f_open(&SDFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
               {
                   Error_Handler();
               }
               else
               {
                   //Write to the text file
-                  res = f_write(&SDFile, wtext, strlen((char *)wtext), (void *)&byteswritten);
+                  res = f_write(&SDFile, wtext, chunk_size, (void *)&byteswritten);
                   if((byteswritten == 0) || (res != FR_OK))
                   {
                       Error_Handler();
@@ -172,7 +176,6 @@ int main(void)
                   }
               }
           }
-          f_close(&SDFile);
       }
 
       HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,RESET);
@@ -182,23 +185,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-	  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
-		{
-		  Error_Handler();
-		}
-	  	sprintf(text, "\n%u\n",HAL_GetTick());
-		res = f_write(&SDFile, text, strlen((char *)text), (void *)&byteswritten);
-		if((byteswritten == 0) || (res != FR_OK))
-		{
-			Error_Handler();
-		}
-		else
-		{
-			f_close(&SDFile);
-		}
-
-
-
+		WriteTime();
 
  int looper = 0;
       while (1)
@@ -213,7 +200,7 @@ int main(void)
 		  Error_Handler();
 		}
 	  	//sprintf(wtext, "%d",a);
-		res = f_write(&SDFile, wtext, strlen((char *)wtext), (void *)&byteswritten);
+		res = f_write(&SDFile, wtext, chunk_size, (void *)&byteswritten);
 		if((byteswritten == 0) || (res != FR_OK))
 		{
 			Error_Handler();
@@ -223,7 +210,6 @@ int main(void)
 			f_close(&SDFile);
 		}
 	}
-
 
 	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 		  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
@@ -241,24 +227,10 @@ int main(void)
 				f_close(&SDFile);
 			}
 
-	f_close(&SDFile);
 	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
-	if(looper == 100){
+	if(looper == 10){
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-			  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
-				{
-				  Error_Handler();
-				}
-			  	sprintf(text, "\n%u\n",HAL_GetTick());
-				res = f_write(&SDFile, text, strlen((char *)text), (void *)&byteswritten);
-				if((byteswritten == 0) || (res != FR_OK))
-				{
-					Error_Handler();
-				}
-				else
-				{
-					f_close(&SDFile);
-				}
+		WriteTime();
 	  	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
 		f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
 		while(1){
@@ -600,7 +572,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void WriteTime()
+{
+	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
+	{
+		Error_Handler();
+	}
+		sprintf(text, "\n#######################%u\n",HAL_GetTick());
+		res = f_write(&SDFile, text, strlen((char *)text), (void *)&byteswritten);
+	if((byteswritten == 0) || (res != FR_OK))
+	{
+		Error_Handler();
+	}
+	else
+	{
+		f_close(&SDFile);
+	}
+}
 /* USER CODE END 4 */
 
 /**
@@ -611,9 +599,13 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,RESET);
+	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
+	HAL_GPIO_WritePin(LED_RED_GPIO_Port,LED_RED_Pin,RESET);
   __disable_irq();
   while (1)
   {
+
   }
   /* USER CODE END Error_Handler_Debug */
 }

@@ -64,8 +64,8 @@ all: main-build
 main-build: SDCARD.elf secondary-outputs
 
 # Tool invocations
-SDCARD.elf: $(OBJS) $(USER_OBJS) C:\Users\forre\STM32CubeIDE\workspace_1.8.0\SDCARD\STM32H723ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "SDCARD.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\forre\STM32CubeIDE\workspace_1.8.0\SDCARD\STM32H723ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SDCARD.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+SDCARD.elf: $(OBJS) $(USER_OBJS) C:\Users\forre\Desktop\Data_aq\From\ STM\SDCARD\STM32H723ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "SDCARD.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\forre\Desktop\Data_aq\From STM\SDCARD\STM32H723ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SDCARD.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
