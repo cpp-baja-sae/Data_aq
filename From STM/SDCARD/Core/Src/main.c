@@ -30,7 +30,8 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define chunk_size 512*50
+#define chunk_mult 500
+#define chunk_size 512*chunk_mult
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -110,7 +111,7 @@ uint8_t rtext[_MAX_SS];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	HalfKBWrite(wtext,50);
+	HalfKBWrite(wtext,chunk_mult);
   /* USER CODE END 1 */
 
   /* Enable I-Cache---------------------------------------------------------*/
@@ -179,26 +180,33 @@ int main(void)
       }
 
       HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,RESET);
+      WriteTime();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-		WriteTime();
+
 
  int looper = 0;
+ char str[80]={0};
       while (1)
   {
+    	  int timestart = 0;
+    	  int timestop = 0;
     	  looper++;
   	  HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
 
+  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
+  			{
+  			  Error_Handler();
+  			}
+
 	for(int a = 0 ; a<100;a++){
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-	  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
-		{
-		  Error_Handler();
-		}
+		//timestart = HAL_GetTick();
+
 	  	//sprintf(wtext, "%d",a);
 		res = f_write(&SDFile, wtext, chunk_size, (void *)&byteswritten);
 		if((byteswritten == 0) || (res != FR_OK))
@@ -207,10 +215,12 @@ int main(void)
 		}
 		else
 		{
-			f_close(&SDFile);
-		}
-	}
 
+		}
+		//timestop = HAL_GetTick();
+		//HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
+	}
+	f_close(&SDFile);
 	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 		  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
 			{
@@ -372,7 +382,7 @@ static void MX_SDMMC1_SD_Init(void)
   hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_ENABLE;
   hsd1.Init.BusWide = SDMMC_BUS_WIDE_4B;
   hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd1.Init.ClockDiv = 5;
+  hsd1.Init.ClockDiv = 2;
   /* USER CODE BEGIN SDMMC1_Init 2 */
 
   /* USER CODE END SDMMC1_Init 2 */
