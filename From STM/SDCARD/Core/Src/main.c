@@ -26,6 +26,7 @@
 #include "commands.h"
 #include "stdio.h"
 #include "helpercmd.h"
+#include "SDInterface.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -101,6 +102,7 @@ uint32_t byteswritten, bytesread;
 char wtext[chunk_size]={0};
 
 char text[] = "empty place holder that needs length";
+const char * file_name[] = {"MyFile.txt"};
 uint8_t rtext[_MAX_SS];
 /* USER CODE END 0 */
 
@@ -145,42 +147,13 @@ int main(void)
   MX_FATFS_Init();
   MX_USB_OTG_HS_USB_Init();
   /* USER CODE BEGIN 2 */
-  	  HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
-      if(f_mount(&SDFatFS, (TCHAR const*)SDPath, 0) != FR_OK)
-      {
-          Error_Handler();
-      }
-      else
-      {
-          if(f_mkfs((TCHAR const*)SDPath, FM_ANY, 0, rtext, sizeof(rtext)) != FR_OK)
-          {
-              Error_Handler();
-          }
-          else
-          {
-              //Open file for writing (Create)
-              if(f_open(&SDFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
-              {
-                  Error_Handler();
-              }
-              else
-              {
-                  //Write to the text file
-                  res = f_write(&SDFile, wtext, chunk_size, (void *)&byteswritten);
-                  if((byteswritten == 0) || (res != FR_OK))
-                  {
-                      Error_Handler();
-                  }
-                  else
-                  {
-                      f_close(&SDFile);
-                  }
-              }
-          }
-      }
-
-      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,RESET);
-      WriteTime();
+	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
+	MountSD();
+	OpenSD(file_name,w);
+	WriteSD(wtext,chunk_size,&byteswritten);
+	CloseSD();
+	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,RESET);
+	WriteTime();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -198,44 +171,24 @@ int main(void)
     	  looper++;
   	  HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
 
-  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
-  			{
-  			  Error_Handler();
-  			}
+  	OpenSD(file_name,a);
 
-	for(int a = 0 ; a<100;a++){
+	for(int a = 0 ; a<100;a++)
+	{
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 		//timestart = HAL_GetTick();
-
 	  	//sprintf(wtext, "%d",a);
-		res = f_write(&SDFile, wtext, chunk_size, (void *)&byteswritten);
-		if((byteswritten == 0) || (res != FR_OK))
-		{
-			Error_Handler();
-		}
-		else
-		{
-
-		}
+		WriteSD(wtext,chunk_size,&byteswritten);
 		//timestop = HAL_GetTick();
 		//HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
 	}
-	f_close(&SDFile);
+	CloseSD();
 	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-		  	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
-			{
-			  Error_Handler();
-			}
+
+	OpenSD(file_name,a);
 		  	sprintf(text, "\n");
-			res = f_write(&SDFile, text, strlen((char *)text), (void *)&byteswritten);
-			if((byteswritten == 0) || (res != FR_OK))
-			{
-				Error_Handler();
-			}
-			else
-			{
-				f_close(&SDFile);
-			}
+	WriteSD(text,strlen((char *)text),&byteswritten);
+	CloseSD();
 
 	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
 	if(looper == 10){

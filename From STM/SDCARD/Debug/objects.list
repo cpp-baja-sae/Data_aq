@@ -1,3 +1,4 @@
+"./Core/Src/SDInterface.o"
 "./Core/Src/commands.o"
 "./Core/Src/helpercmd.o"
 "./Core/Src/main.o"
