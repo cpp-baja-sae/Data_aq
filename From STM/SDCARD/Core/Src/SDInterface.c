@@ -12,7 +12,7 @@ void MountSD()
 {
 	// Temporary memory allocation to setup file system
 	// http://elm-chan.org/fsw/ff/doc/mkfs.html
-	uint8_t rtext[_MAX_SS];
+	uint8_t rtext[_MAX_SS*32];
 	FRESULT res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
     if( res != FR_OK)
     {

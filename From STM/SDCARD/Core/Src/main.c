@@ -31,7 +31,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define chunk_mult 500
+#define chunk_mult 16
 #define chunk_size 512*chunk_mult
 /* USER CODE END PTD */
 
@@ -166,32 +166,32 @@ int main(void)
  char str[80]={0};
       while (1)
   {
-    	  int timestart = 0;
-    	  int timestop = 0;
-    	  looper++;
-  	  HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
+	int timestart = 0;
+	int timestop = 0;
+	looper++;
+  	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
 
   	OpenSD(file_name,a);
 
 	for(int a = 0 ; a<100;a++)
 	{
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-		//timestart = HAL_GetTick();
+		timestart = GET_Micros();
 	  	//sprintf(wtext, "%d",a);
 		WriteSD(wtext,chunk_size,&byteswritten);
-		//timestop = HAL_GetTick();
-		//HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
+		timestop = HAL_GetTick();
+		HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
 	}
 	CloseSD();
 	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 
 	OpenSD(file_name,a);
-		  	sprintf(text, "\n");
+	sprintf(text, "\n");
 	WriteSD(text,strlen((char *)text),&byteswritten);
 	CloseSD();
 
 	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
-	if(looper == 10){
+	if(looper == 20){
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 		WriteTime();
 	  	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
