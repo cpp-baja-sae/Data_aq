@@ -102,7 +102,7 @@ uint32_t byteswritten, bytesread;
 char wtext[chunk_size]={0};
 
 char text[] = "empty place holder that needs length";
-const char * file_name[] = {"MyFile.txt"};
+const char * file_name[] = {"MyFile.hex"};
 uint8_t rtext[_MAX_SS];
 /* USER CODE END 0 */
 
@@ -149,22 +149,17 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
 	MountSD();
-	OpenSD(file_name,w);
-	WriteSD(wtext,chunk_size,&byteswritten);
-	CloseSD();
-	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,RESET);
 	WriteTime();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
+	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 
-
- int looper = 0;
- char str[80]={0};
-      while (1)
+	int looper = 0;
+	char str[80]={0};
+    while (1)
   {
 	int timestart = 0;
 	int timestop = 0;
@@ -176,7 +171,7 @@ int main(void)
 	for(int a = 0 ; a<100;a++)
 	{
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-		timestart = GET_Micros();
+		timestart = HAL_GetTick();
 	  	//sprintf(wtext, "%d",a);
 		WriteSD(wtext,chunk_size,&byteswritten);
 		timestop = HAL_GetTick();
@@ -195,7 +190,7 @@ int main(void)
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 		WriteTime();
 	  	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
-		f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
+		CloseSD();
 		while(1){
 			HAL_Delay(100);
 			HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
