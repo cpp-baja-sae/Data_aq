@@ -57,8 +57,16 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define ADC17_24_Pin GPIO_PIN_3
+#define ADC17_24_GPIO_Port GPIOE
 #define B1_Pin GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
+#define ADC1_8_Pin GPIO_PIN_7
+#define ADC1_8_GPIO_Port GPIOF
+#define ADC9_16_Pin GPIO_PIN_8
+#define ADC9_16_GPIO_Port GPIOF
+#define ADC_CONV_AB_Pin GPIO_PIN_9
+#define ADC_CONV_AB_GPIO_Port GPIOF
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
 #define RMII_MDC_Pin GPIO_PIN_1
@@ -75,8 +83,10 @@ void Error_Handler(void);
 #define RMII_RXD1_GPIO_Port GPIOC
 #define LED_GREEN_Pin GPIO_PIN_0
 #define LED_GREEN_GPIO_Port GPIOB
-#define toggle_Pin GPIO_PIN_1
-#define toggle_GPIO_Port GPIOG
+#define ADC_CS_Pin GPIO_PIN_0
+#define ADC_CS_GPIO_Port GPIOG
+#define ADC_SCLK_Pin GPIO_PIN_1
+#define ADC_SCLK_GPIO_Port GPIOG
 #define RMII_TXD1_Pin GPIO_PIN_13
 #define RMII_TXD1_GPIO_Port GPIOB
 #define LED_RED_Pin GPIO_PIN_14
@@ -97,6 +107,8 @@ void Error_Handler(void);
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
+#define ADC_RESET_Pin GPIO_PIN_1
+#define ADC_RESET_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOG
 #define RMII_TXD0_Pin GPIO_PIN_13

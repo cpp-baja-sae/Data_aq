@@ -22,11 +22,12 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stm32h7xx_hal_tim.h"
+#include "ADS8588H.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define HalfDutyCycle (TIM14->ARR / 2)
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -61,7 +62,7 @@ static void MX_TIM14_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int StartADC = 0;
+int StartADCFlag = 0;
 /* USER CODE END 0 */
 
 /**
@@ -96,7 +97,8 @@ int main(void)
   MX_TIM7_Init();
   MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
-  int write = 1;
+  ADS8588H_init();
+  ADC_DATA_t ADC_DATA = {0};
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -104,18 +106,9 @@ int main(void)
   while (1)
   {
 	  // Enter task list
-	  if (StartADC == 1)
+	  if (StartADCFlag == 1)
 	  {
-		  if((TIM14->CNT >=HalfDutyCycle) && (write == 1)){
-			  HAL_GPIO_WritePin(toggle_GPIO_Port, toggle_Pin, SET);
-			  write = RESET;
-			  TIM14->CNT = RESET;
-		  }else if(write == 0)
-		  {
-			  write = SET;
-			  HAL_GPIO_WritePin(toggle_GPIO_Port, toggle_Pin, RESET);
-		  }
-
+		  ADC_SERVICE_ROUTINE(&ADC_DATA);
 	  }
     /* USER CODE END WHILE */
 
@@ -233,9 +226,9 @@ static void MX_TIM14_Init(void)
 
   /* USER CODE END TIM14_Init 1 */
   htim14.Instance = TIM14;
-  htim14.Init.Prescaler = 2-1;
+  htim14.Init.Prescaler = 0;
   htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim14.Init.Period = 69-1;
+  htim14.Init.Period = 136;
   htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
@@ -308,31 +301,49 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, ADC17_24_Pin|TEST_Pin|LED_YELLOW_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOF, ADC1_8_Pin|ADC9_16_Pin|ADC_CONV_AB_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LED_GREEN_Pin|LED_RED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(toggle_GPIO_Port, toggle_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOG, ADC_CS_Pin|ADC_SCLK_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, USB_FS_PWR_EN_Pin|ADC_RESET_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, TEST_Pin|LED_YELLOW_Pin, GPIO_PIN_RESET);
+  /*Configure GPIO pins : ADC17_24_Pin TEST_Pin LED_YELLOW_Pin */
+  GPIO_InitStruct.Pin = ADC17_24_Pin|TEST_Pin|LED_YELLOW_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : ADC1_8_Pin ADC9_16_Pin ADC_CONV_AB_Pin */
+  GPIO_InitStruct.Pin = ADC1_8_Pin|ADC9_16_Pin|ADC_CONV_AB_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RMII_MDC_Pin RMII_RXD0_Pin RMII_RXD1_Pin */
   GPIO_InitStruct.Pin = RMII_MDC_Pin|RMII_RXD0_Pin|RMII_RXD1_Pin;
@@ -357,12 +368,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : toggle_Pin */
-  GPIO_InitStruct.Pin = toggle_Pin;
+  /*Configure GPIO pin : ADC_CS_Pin */
+  GPIO_InitStruct.Pin = ADC_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADC_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ADC_SCLK_Pin */
+  GPIO_InitStruct.Pin = ADC_SCLK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(toggle_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(ADC_SCLK_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RMII_TXD1_Pin */
   GPIO_InitStruct.Pin = RMII_TXD1_Pin;
@@ -372,12 +390,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(RMII_TXD1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : USB_FS_PWR_EN_Pin */
-  GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin;
+  /*Configure GPIO pins : USB_FS_PWR_EN_Pin ADC_RESET_Pin */
+  GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin|ADC_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(USB_FS_PWR_EN_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_FS_OVCR_Pin */
   GPIO_InitStruct.Pin = USB_FS_OVCR_Pin;
@@ -401,13 +419,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : TEST_Pin LED_YELLOW_Pin */
-  GPIO_InitStruct.Pin = TEST_Pin|LED_YELLOW_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
 }
 
 /* USER CODE BEGIN 4 */
@@ -418,7 +429,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  {
 		  HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin);
 		  // Flag for ADC Task
-		  StartADC = 1;
+		  StartADCFlag = 1;
 	  }
 }
 /* USER CODE END 4 */
