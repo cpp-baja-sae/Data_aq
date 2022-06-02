@@ -109,6 +109,12 @@ int main(void)
 	  if (StartADCFlag == 1)
 	  {
 		  ADC_SERVICE_ROUTINE(&ADC_DATA);
+		  StartADCFlag = RESET;
+		  ADC_DATA->ADCCallCount++;
+	  }
+	  if(ADC_DATA->ADCCallCount >= 100)
+	  {
+
 	  }
     /* USER CODE END WHILE */
 

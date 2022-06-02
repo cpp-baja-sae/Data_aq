@@ -17,6 +17,7 @@ void ADC_SERVICE_ROUTINE(ADC_DATA_t *ADC_DATA) {
    * Board needs a interrupt tied to falling edge of BUSY(?)
    * Wait out BUSY and OSR
    */
+  // Replace with pin read instead.
   TIM14WaitUntil(BUSYWAIT);
   //delay_5ns(WAIT_OUT_CONVERSION_TIME_200us);
 
@@ -27,28 +28,27 @@ void ADC_SERVICE_ROUTINE(ADC_DATA_t *ADC_DATA) {
 void ADS8588H_READ_8CH(ADC_DATA_t *ADC_DATA) {
   // Lower CS to enable data conversion
 	HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, RESET);
-
   for (int channel = 0; channel < QTY_DIFF_CHANNELS; channel++)
   {
     for (int stepping = CLK_CYCLES; stepping >= 0; stepping--)
     {
     	//Timer is very sensitive to abstraction ???
-		while(TIM14->CNT <=HalfDutyCycle);
+		while(TIM14->CNT <=HalfDutyCycle/2);
 		TIM14->CNT = RESET;
 		HAL_GPIO_WritePin(ADC_SCLK_GPIO_Port,ADC_SCLK_Pin,RESET);
 
-		ADC_DATA->ADC1_8 |= (HAL_GPIO_ReadPin(ADC1_8_GPIO_Port,ADC1_8_Pin)<< stepping);
-		ADC_DATA->ADC9_16 |= (HAL_GPIO_ReadPin(ADC9_16_GPIO_Port,ADC9_16_Pin)<< stepping);
-		ADC_DATA->ADC17_24 |= (HAL_GPIO_ReadPin(ADC17_24_GPIO_Port,ADC17_24_Pin)<< stepping);
-		ADC_DATA->DataPoint++;
-		HAL_GPIO_WritePin(ADC_SCLK_GPIO_Port,ADC_SCLK_Pin,SET);
+		// Reading GPIO pins directly and adjusting register value as needed
+		ADC_DATA->ADC1_8[channel] |= (((ADC1_8_GPIO_Port->IDR & ADC1_8_Pin) >> 7 ) & 1U )<< stepping;
 
+		ADC_DATA->ADC9_16[channel] |= (((ADC9_16_GPIO_Port->IDR & ADC9_16_Pin)>> 8 ) & 1U )<< stepping;
+
+		ADC_DATA->ADC17_24[channel] |= (((ADC17_24_GPIO_Port->IDR & ADC17_24_Pin) >> 3 ) & 1U) << stepping;
+
+		HAL_GPIO_WritePin(ADC_SCLK_GPIO_Port,ADC_SCLK_Pin,SET);
     }
-//    convertData(channel, &ADC_Strain_Guage_1);
-//    convertData(channel, &ADC_Strain_Guage_2);
-//    convertData(channel, &ADC_General_Purpose_1);
   }
   HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, RESET);
+  ADC_DATA->DataPoint++;
 }
 
 

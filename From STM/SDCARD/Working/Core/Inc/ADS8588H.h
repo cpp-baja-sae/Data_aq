@@ -10,8 +10,8 @@
 #include "main.h"
 #include "stdint.h"
 
-#define BUSYWAIT 1800
-#define SMALLWAIT 100
+#define BUSYWAIT 100
+#define SMALLWAIT 50
 #define HalfDutyCycle (TIM14->ARR / 2)
 
 #define PWM_BIT_RESOLUTION 10
@@ -74,10 +74,11 @@ enum ADC_TC_MUXING {
   SINGLE_ENDED_6
 };
 typedef struct ADC_DATA_t {
-	uint16_t ADC1_8;
-	uint16_t ADC9_16;
-	uint16_t ADC17_24;
+	uint16_t ADC1_8[8];
+	uint16_t ADC9_16[8];
+	uint16_t ADC17_24[8];
 	uint16_t DataPoint;
+	uint16_t ADCCallCount;
 } ADC_DATA_t;
 
 void ADS8588H_init();
