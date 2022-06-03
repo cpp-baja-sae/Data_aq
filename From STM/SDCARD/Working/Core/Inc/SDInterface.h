@@ -9,6 +9,8 @@
 #define INC_SDINTERFACE_H_
 
 #include "fatfs.h"
+#include "ADS8588H.h"
+#include "stdint.h"
 
 // http://elm-chan.org/fsw/ff/doc/open.html
 enum SD_FATFS_POSIX
@@ -22,9 +24,10 @@ enum SD_FATFS_POSIX
 	wx		 = FA_CREATE_NEW | FA_WRITE,
 	wxPLUS	 = FA_CREATE_NEW | FA_WRITE | FA_READ
 }SD_FATFS_POSIX;
-
+#define QTY 8
 void MountSD();
 void OpenSD(const char **file_name,enum SD_FATFS_POSIX file_acces_type);
-void WriteSD(char *wtext, uint32_t wtextSize, uint32_t *BytesWritten);
+void WriteSD(uint16_t *wtext, uint32_t wtextSize, uint32_t *BytesWritten);
 void CloseSD();
+void UnMountSD();
 #endif /* INC_SDINTERFACE_H_ */

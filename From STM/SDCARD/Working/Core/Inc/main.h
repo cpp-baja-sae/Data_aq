@@ -107,6 +107,8 @@ void Error_Handler(void);
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
+#define ADC_BUSY_Pin GPIO_PIN_0
+#define ADC_BUSY_GPIO_Port GPIOD
 #define ADC_RESET_Pin GPIO_PIN_1
 #define ADC_RESET_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11

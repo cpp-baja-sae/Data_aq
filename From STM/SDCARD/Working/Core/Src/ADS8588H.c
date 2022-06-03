@@ -18,7 +18,8 @@ void ADC_SERVICE_ROUTINE(ADC_DATA_t *ADC_DATA) {
    * Wait out BUSY and OSR
    */
   // Replace with pin read instead.
-  TIM14WaitUntil(BUSYWAIT);
+  while(HAL_GPIO_ReadPin(ADC_BUSY_GPIO_Port,ADC_BUSY_Pin));
+  //TIM14WaitUntil(BUSYWAIT);
   //delay_5ns(WAIT_OUT_CONVERSION_TIME_200us);
 
   ADS8588H_READ_8CH(ADC_DATA);

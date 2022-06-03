@@ -18,11 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stm32h7xx_hal_tim.h"
 #include "ADS8588H.h"
+#include "SDInterface.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,6 +35,12 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ADCBits 16
+#define ADCChannelQTY 8
+#define ADCCount 3
+#define ADCFrames 32
+#define OverHead 4
+#define SDCardDataLength ADCBits*ADCChannelQTY*ADCCount*ADCFrames + OverHead
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -41,11 +50,14 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+SD_HandleTypeDef hsd1;
+
 TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim14;
 
 UART_HandleTypeDef huart3;
 
+MDMA_HandleTypeDef hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -55,6 +67,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_MDMA_Init(void);
+static void MX_SDMMC1_SD_Init(void);
 static void MX_TIM14_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -63,6 +77,7 @@ static void MX_TIM14_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 int StartADCFlag = 0;
+const char * file_name[] = {"MyFile.hex"};
 /* USER CODE END 0 */
 
 /**
@@ -95,10 +110,22 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   MX_TIM7_Init();
+  MX_MDMA_Init();
+  MX_SDMMC1_SD_Init();
   MX_TIM14_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+  MountSD();
+  HAL_TIM_Base_Start(&htim14);
   ADS8588H_init();
+  HAL_TIM_Base_Start_IT(&htim7);
+
+  OpenSD(file_name,a);
   ADC_DATA_t ADC_DATA = {0};
+  uint16_t DATATRANS[SDCardDataLength] = {0};
+  uint32_t BytesWritten = 0;
+  uint32_t SAVEFILENOW = 200*60*60*1/ADCFrames;
+  uint32_t FileINC = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,13 +135,31 @@ int main(void)
 	  // Enter task list
 	  if (StartADCFlag == 1)
 	  {
-		  ADC_SERVICE_ROUTINE(&ADC_DATA);
-		  StartADCFlag = RESET;
-		  ADC_DATA->ADCCallCount++;
-	  }
-	  if(ADC_DATA->ADCCallCount >= 100)
-	  {
+		ADC_SERVICE_ROUTINE(&ADC_DATA);
+		StartADCFlag = RESET;
 
+		memcpy(&DATATRANS[ADC_DATA.ADCCallCount*24 + 0], &ADC_DATA.ADC1_8[0],16);
+		memcpy(&DATATRANS[ADC_DATA.ADCCallCount*24 + 8], &ADC_DATA.ADC9_16[0],16);
+		memcpy(&DATATRANS[ADC_DATA.ADCCallCount*24 + 16], &ADC_DATA.ADC17_24[0],16);
+		ADC_DATA.ADCCallCount++;
+	  }
+
+	  if(ADC_DATA.ADCCallCount >= ADCFrames)
+	  {
+		  ADC_DATA.ADCCallCount = 0;
+		  for(uint16_t i = 0; i < SDCardDataLength; i++)
+		  {
+			  DATATRANS[SDCardDataLength] = i;
+		  }
+		  WriteSD(DATATRANS,SDCardDataLength,&BytesWritten);
+		  FileINC++;
+	  }
+	  if (FileINC >= SAVEFILENOW)
+	  {
+		  HAL_TIM_Base_Stop_IT(&htim7);
+		  CloseSD();
+		  UnMountSD();
+		  Error_Handler();
 	  }
     /* USER CODE END WHILE */
 
@@ -179,6 +224,33 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief SDMMC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SDMMC1_SD_Init(void)
+{
+
+  /* USER CODE BEGIN SDMMC1_Init 0 */
+
+  /* USER CODE END SDMMC1_Init 0 */
+
+  /* USER CODE BEGIN SDMMC1_Init 1 */
+
+  /* USER CODE END SDMMC1_Init 1 */
+  hsd1.Instance = SDMMC1;
+  hsd1.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
+  hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_ENABLE;
+  hsd1.Init.BusWide = SDMMC_BUS_WIDE_4B;
+  hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
+  hsd1.Init.ClockDiv = 5;
+  /* USER CODE BEGIN SDMMC1_Init 2 */
+
+  /* USER CODE END SDMMC1_Init 2 */
+
+}
+
+/**
   * @brief TIM7 Initialization Function
   * @param None
   * @retval None
@@ -198,7 +270,7 @@ static void MX_TIM7_Init(void)
   htim7.Instance = TIM7;
   htim7.Init.Prescaler = 1375-1;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 10000-1;
+  htim7.Init.Period = 500-1;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
@@ -211,7 +283,7 @@ static void MX_TIM7_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM7_Init 2 */
-  HAL_TIM_Base_Start_IT(&htim7);
+
   /* USER CODE END TIM7_Init 2 */
 
 }
@@ -244,7 +316,7 @@ static void MX_TIM14_Init(void)
   /* USER CODE BEGIN TIM14_Init 2 */
   //HAL_TIM_Base_Start_IT(&htim14);
   //TIM14->CCR1 = 34;
-  HAL_TIM_Base_Start(&htim14);
+
   /* USER CODE END TIM14_Init 2 */
 
 }
@@ -294,6 +366,53 @@ static void MX_USART3_UART_Init(void)
   /* USER CODE BEGIN USART3_Init 2 */
 
   /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
+  * Enable MDMA controller clock
+  * Configure MDMA for global transfers
+  *   hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0
+  */
+static void MX_MDMA_Init(void)
+{
+
+  /* MDMA controller clock enable */
+  __HAL_RCC_MDMA_CLK_ENABLE();
+  /* Local variables */
+
+  /* Configure MDMA channel MDMA_Channel0 */
+  /* Configure MDMA request hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0 on MDMA_Channel0 */
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Instance = MDMA_Channel0;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.Request = MDMA_REQUEST_SDMMC1_DMA_ENDBUFFER;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.TransferTriggerMode = MDMA_BUFFER_TRANSFER;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.Priority = MDMA_PRIORITY_LOW;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.Endianness = MDMA_LITTLE_ENDIANNESS_PRESERVE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.SourceInc = MDMA_SRC_INC_BYTE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.DestinationInc = MDMA_DEST_INC_BYTE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.SourceDataSize = MDMA_SRC_DATASIZE_BYTE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.DestDataSize = MDMA_DEST_DATASIZE_BYTE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.DataAlignment = MDMA_DATAALIGN_PACKENABLE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.BufferTransferLength = 1;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.SourceBurst = MDMA_SOURCE_BURST_SINGLE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.DestBurst = MDMA_DEST_BURST_SINGLE;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.SourceBlockAddressOffset = 0;
+  hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0.Init.DestBlockAddressOffset = 0;
+  if (HAL_MDMA_Init(&hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* Configure post request address and data masks */
+  if (HAL_MDMA_ConfigPostRequestMask(&hmdma_mdma_channel40_sdmmc1_dma_endbuffer_0, 0, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* MDMA interrupt initialization */
+  /* MDMA_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(MDMA_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(MDMA_IRQn);
 
 }
 
@@ -417,6 +536,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG1_HS;
   HAL_GPIO_Init(USB_FS_ID_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : ADC_BUSY_Pin */
+  GPIO_InitStruct.Pin = ADC_BUSY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ADC_BUSY_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : RMII_TX_EN_Pin RMII_TXD0_Pin */
   GPIO_InitStruct.Pin = RMII_TX_EN_Pin|RMII_TXD0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -448,9 +573,12 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
+
   while (1)
   {
+	  HAL_Delay(100);
+	  HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
+
   }
   /* USER CODE END Error_Handler_Debug */
 }
