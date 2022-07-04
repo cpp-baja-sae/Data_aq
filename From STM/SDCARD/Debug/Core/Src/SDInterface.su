@@ -1,4 +1,4 @@
-SDInterface.c:11:6:MountSD	16408	static
+SDInterface.c:11:6:MountSD	16400	static
 SDInterface.c:31:6:OpenSD	24	static
 SDInterface.c:40:6:WriteSD	32	static
 SDInterface.c:49:6:CloseSD	8	static

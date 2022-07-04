@@ -20,11 +20,11 @@ void MountSD()
     }
     else
     {
-    	FRESULT res = f_mkfs((TCHAR const*)SDPath, FM_ANY, 0, rtext, sizeof(rtext));
-        if( res != FR_OK)
-        {
-            Error_Handler();
-        }
+//    	FRESULT res = f_mkfs((TCHAR const*)SDPath, FM_ANY, 0, rtext, sizeof(rtext));
+//        if( res != FR_OK)
+//        {
+//            Error_Handler();
+//        }
     }
 };
 

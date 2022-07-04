@@ -9,6 +9,10 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/subdir.mk
+-include Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/subdir.mk
+-include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/subdir.mk
+-include Middlewares/Third_Party/FreeRTOS/Source/subdir.mk
 -include Middlewares/Third_Party/FatFs/src/option/subdir.mk
 -include Middlewares/Third_Party/FatFs/src/subdir.mk
 -include FATFS/Target/subdir.mk
@@ -64,8 +68,8 @@ all: main-build
 main-build: SDCARD.elf secondary-outputs
 
 # Tool invocations
-SDCARD.elf: $(OBJS) $(USER_OBJS) C:\Users\forre\Desktop\Data_aq\From\ STM\SDCARD\STM32H723ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "SDCARD.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\forre\Desktop\Data_aq\From STM\SDCARD\STM32H723ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SDCARD.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+SDCARD.elf: $(OBJS) $(USER_OBJS) C:\Users\forre\Desktop\BajaSaeProgramming\Data_aq\From\ STM\SDCARD\STM32H723ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "SDCARD.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\forre\Desktop\BajaSaeProgramming\Data_aq\From STM\SDCARD\STM32H723ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SDCARD.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "string.h"
+#include "cmsis_os.h"
 #include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -27,6 +27,7 @@
 #include "stdio.h"
 #include "helpercmd.h"
 #include "SDInterface.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,58 +39,43 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 void WriteTime();
+static void FS_FileOperations(void);
+static void SD_Initialize(void);
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+static uint8_t isInitialized = 0;
+static uint8_t isFsCreated = 0;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-#if defined ( __ICCARM__ ) /*!< IAR Compiler */
-
-#pragma location=0x30000000
-ETH_DMADescTypeDef  DMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
-#pragma location=0x30000060
-ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
-#pragma location=0x300000c0
-uint8_t Rx_Buff[ETH_RX_DESC_CNT][ETH_MAX_PACKET_SIZE]; /* Ethernet Receive Buffers */
-
-#elif defined ( __CC_ARM )  /* MDK ARM Compiler */
-
-__attribute__((at(0x30000000))) ETH_DMADescTypeDef  DMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
-__attribute__((at(0x30000060))) ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
-__attribute__((at(0x300000c0))) uint8_t Rx_Buff[ETH_RX_DESC_CNT][ETH_MAX_PACKET_SIZE]; /* Ethernet Receive Buffer */
-
-#elif defined ( __GNUC__ ) /* GNU Compiler */
-
-ETH_DMADescTypeDef DMARxDscrTab[ETH_RX_DESC_CNT] __attribute__((section(".RxDecripSection"))); /* Ethernet Rx DMA Descriptors */
-ETH_DMADescTypeDef DMATxDscrTab[ETH_TX_DESC_CNT] __attribute__((section(".TxDecripSection")));   /* Ethernet Tx DMA Descriptors */
-uint8_t Rx_Buff[ETH_RX_DESC_CNT][ETH_MAX_PACKET_SIZE] __attribute__((section(".RxArraySection"))); /* Ethernet Receive Buffers */
-
-#endif
-
-ETH_TxPacketConfig TxConfig;
-
-ETH_HandleTypeDef heth;
 
 SD_HandleTypeDef hsd1;
 
 UART_HandleTypeDef huart3;
 
 MDMA_HandleTypeDef hmdma_mdma_channel40_sdmmc1_end_data_0;
+/* Definitions for SD_INT */
+osThreadId_t SD_INTHandle;
+const osThreadAttr_t SD_INT_attributes = {
+  .name = "SD_INT",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
 /* USER CODE BEGIN PV */
-
+uint8_t workBuffer[_MAX_SS];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_ETH_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_MDMA_Init(void);
 static void MX_SDMMC1_SD_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
+void StartDefaultTask(void *argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -99,11 +85,21 @@ static void MX_USB_OTG_HS_USB_Init(void);
 FRESULT res;
 uint32_t byteswritten, bytesread;
 
-char wtext[chunk_size]={0};
+//char wtext[chunk_size]={0};
 
 char text[] = "empty place holder that needs length";
 const char * file_name[] = {"MyFile.hex"};
-uint8_t rtext[_MAX_SS];
+//uint8_t rtext[_MAX_SS];
+
+// SD card variables for FATFS
+extern char SDPath[4]; 	/* SD logical drive path */
+extern FATFS SDFatFS;	/* File system object for SD logical drive */
+extern FIL SDFile;		/* File object for SD */
+
+FRESULT res;
+uint32_t byteswritten, bytesread;
+uint8_t wtext[] = "This is me, and my own world";
+uint8_t rtext[100];
 /* USER CODE END 0 */
 
 /**
@@ -113,14 +109,8 @@ uint8_t rtext[_MAX_SS];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	HalfKBWrite(wtext,chunk_mult);
+	//HalfKBWrite(wtext,chunk_mult);
   /* USER CODE END 1 */
-
-  /* Enable I-Cache---------------------------------------------------------*/
-  SCB_EnableICache();
-
-  /* Enable D-Cache---------------------------------------------------------*/
-  SCB_EnableDCache();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -140,18 +130,55 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_ETH_Init();
   MX_USART3_UART_Init();
   MX_MDMA_Init();
   MX_SDMMC1_SD_Init();
   MX_FATFS_Init();
   MX_USB_OTG_HS_USB_Init();
   /* USER CODE BEGIN 2 */
+  //SD_Initialize();
+
 	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
-	MountSD();
-	WriteTime();
+	//MountSD();
+	//WriteTime();
+	//MX_FATFS_Init();
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of SD_INT */
+  SD_INTHandle = osThreadNew(StartDefaultTask, NULL, &SD_INT_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
@@ -168,7 +195,7 @@ int main(void)
 
   	OpenSD(file_name,a);
 
-	for(int a = 0 ; a<100;a++)
+	for(int a = 0 ; a<10;a++)
 	{
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 		timestart = HAL_GetTick();
@@ -186,7 +213,7 @@ int main(void)
 	CloseSD();
 
 	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
-	if(looper == 20){
+	if(looper == 2){
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
 		WriteTime();
 	  	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
@@ -231,11 +258,11 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 275;
+  RCC_OscInitStruct.PLL.PLLN = 44;
   RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 11;
   RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
   RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -262,55 +289,6 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief ETH Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ETH_Init(void)
-{
-
-  /* USER CODE BEGIN ETH_Init 0 */
-
-  /* USER CODE END ETH_Init 0 */
-
-   static uint8_t MACAddr[6];
-
-  /* USER CODE BEGIN ETH_Init 1 */
-
-  /* USER CODE END ETH_Init 1 */
-  heth.Instance = ETH;
-  MACAddr[0] = 0x00;
-  MACAddr[1] = 0x80;
-  MACAddr[2] = 0xE1;
-  MACAddr[3] = 0x00;
-  MACAddr[4] = 0x00;
-  MACAddr[5] = 0x00;
-  heth.Init.MACAddr = &MACAddr[0];
-  heth.Init.MediaInterface = HAL_ETH_RMII_MODE;
-  heth.Init.TxDesc = DMATxDscrTab;
-  heth.Init.RxDesc = DMARxDscrTab;
-  heth.Init.RxBuffLen = 1524;
-
-  /* USER CODE BEGIN MACADDRESS */
-
-  /* USER CODE END MACADDRESS */
-
-  if (HAL_ETH_Init(&heth) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  memset(&TxConfig, 0 , sizeof(ETH_TxPacketConfig));
-  TxConfig.Attributes = ETH_TX_PACKETS_FEATURES_CSUM | ETH_TX_PACKETS_FEATURES_CRCPAD;
-  TxConfig.ChecksumCtrl = ETH_CHECKSUM_IPHDR_PAYLOAD_INSERT_PHDR_CALC;
-  TxConfig.CRCPadCtrl = ETH_CRC_PAD_INSERT;
-  /* USER CODE BEGIN ETH_Init 2 */
-
-  /* USER CODE END ETH_Init 2 */
-
-}
-
-/**
   * @brief SDMMC1 Initialization Function
   * @param None
   * @retval None
@@ -332,7 +310,8 @@ static void MX_SDMMC1_SD_Init(void)
   hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd1.Init.ClockDiv = 2;
   /* USER CODE BEGIN SDMMC1_Init 2 */
-
+  __HAL_RCC_SDMMC1_FORCE_RESET();
+  __HAL_RCC_SDMMC1_RELEASE_RESET();
   /* USER CODE END SDMMC1_Init 2 */
 
 }
@@ -423,7 +402,7 @@ static void MX_MDMA_Init(void)
   hmdma_mdma_channel40_sdmmc1_end_data_0.Instance = MDMA_Channel0;
   hmdma_mdma_channel40_sdmmc1_end_data_0.Init.Request = MDMA_REQUEST_SDMMC1_END_DATA;
   hmdma_mdma_channel40_sdmmc1_end_data_0.Init.TransferTriggerMode = MDMA_BUFFER_TRANSFER;
-  hmdma_mdma_channel40_sdmmc1_end_data_0.Init.Priority = MDMA_PRIORITY_LOW;
+  hmdma_mdma_channel40_sdmmc1_end_data_0.Init.Priority = MDMA_PRIORITY_HIGH;
   hmdma_mdma_channel40_sdmmc1_end_data_0.Init.Endianness = MDMA_LITTLE_ENDIANNESS_PRESERVE;
   hmdma_mdma_channel40_sdmmc1_end_data_0.Init.SourceInc = MDMA_SRC_INC_BYTE;
   hmdma_mdma_channel40_sdmmc1_end_data_0.Init.DestinationInc = MDMA_DEST_INC_BYTE;
@@ -448,7 +427,7 @@ static void MX_MDMA_Init(void)
 
   /* MDMA interrupt initialization */
   /* MDMA_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(MDMA_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(MDMA_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(MDMA_IRQn);
 
 }
@@ -486,12 +465,36 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : RMII_MDC_Pin RMII_RXD0_Pin RMII_RXD1_Pin */
+  GPIO_InitStruct.Pin = RMII_MDC_Pin|RMII_RXD0_Pin|RMII_RXD1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RMII_REF_CLK_Pin RMII_MDIO_Pin RMII_CRS_DV_Pin */
+  GPIO_InitStruct.Pin = RMII_REF_CLK_Pin|RMII_MDIO_Pin|RMII_CRS_DV_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pins : LED_GREEN_Pin LED_RED_Pin */
   GPIO_InitStruct.Pin = LED_GREEN_Pin|LED_RED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : RMII_TXD1_Pin */
+  GPIO_InitStruct.Pin = RMII_TXD1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(RMII_TXD1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_FS_PWR_EN_Pin */
   GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin;
@@ -520,6 +523,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG1_HS;
   HAL_GPIO_Init(USB_FS_ID_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : RMII_TX_EN_Pin RMII_TXD0_Pin */
+  GPIO_InitStruct.Pin = RMII_TX_EN_Pin|RMII_TXD0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
   /*Configure GPIO pin : LED_YELLOW_Pin */
   GPIO_InitStruct.Pin = LED_YELLOW_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -530,6 +541,20 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void SD_Initialize(void)
+{
+  if (isInitialized == 0)
+  {
+    BSP_SD_Init();
+
+    if(BSP_SD_IsDetected())
+    {
+      isInitialized = 1;
+    }
+  }
+}
+
+
 void WriteTime()
 {
 	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
@@ -547,7 +572,112 @@ void WriteTime()
 		f_close(&SDFile);
 	}
 }
+
+
+
+static void FS_FileOperations(void)
+{
+  FRESULT res;                                          /* FatFs function common result code */
+  uint32_t byteswritten, bytesread;                     /* File write/read counts */
+  uint8_t wtext[] = "This is STM32 working with FatFs uSD + FreeRTOS"; /* File write buffer */
+
+  /* Register the file system object to the FatFs module */
+  if(f_mount(&SDFatFS, (TCHAR const*)SDPath, 0) == FR_OK)
+  {
+    /* check whether the FS has been already created */
+    if (isFsCreated == 0)
+    {
+      if(f_mkfs(SDPath, FM_ANY, 0, workBuffer, sizeof(workBuffer)) != FR_OK)
+      {
+
+        return;
+      }
+      isFsCreated = 1;
+    }
+    /* Create and Open a new text file object with write access */
+    if(f_open(&SDFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
+    {
+      /* Write data to the text file */
+      res = f_write(&SDFile, wtext, sizeof(wtext), (void *)&byteswritten);
+
+      if((byteswritten > 0) && (res == FR_OK))
+      {
+        /* Close the open text file */
+        f_close(&SDFile);
+
+        /* Open the text file object with read access */
+        if(f_open(&SDFile, "STM32.TXT", FA_READ) == FR_OK)
+        {
+          /* Read data from the text file */
+          res = f_read(&SDFile, rtext, sizeof(rtext), (void *)&bytesread);
+
+          if((bytesread > 0) && (res == FR_OK))
+          {
+            /* Close the open text file */
+            f_close(&SDFile);
+
+            /* Compare read data with the expected data */
+            if((bytesread == byteswritten))
+            {
+              /* Success of the demo: no error occurrence */
+              return;
+            }
+          }
+        }
+      }
+    }
+  }
+  /* Error */
+}
+
+
+
+//void MX_FATFS_Init(void)
+//{
+//	retSD = FATFS_LinkDriver(&SD_Driver, SDPath);
+//}
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the SD_INT thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+	//res = f_mkfs(SDPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
+  /* Infinite loop */
+  for(;;)
+  {
+	FS_FileOperations();
+    osDelay(1000);
+  }
+  /* USER CODE END 5 */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
