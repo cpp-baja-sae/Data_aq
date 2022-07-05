@@ -32,15 +32,15 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define chunk_mult 16
+#define chunk_mult 1
 #define chunk_size 512*chunk_mult
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 void WriteTime();
-static void FS_FileOperations(void);
-static void SD_Initialize(void);
+static void FS_SPAM(void);
+static void FS_MOUNT(void);
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,7 +60,7 @@ MDMA_HandleTypeDef hmdma_mdma_channel40_sdmmc1_end_data_0;
 osThreadId_t SD_INTHandle;
 const osThreadAttr_t SD_INT_attributes = {
   .name = "SD_INT",
-  .stack_size = 1024 * 4,
+  .stack_size = 8192 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
 /* USER CODE BEGIN PV */
@@ -98,7 +98,7 @@ extern FIL SDFile;		/* File object for SD */
 
 FRESULT res;
 uint32_t byteswritten, bytesread;
-uint8_t wtext[] = "This is me, and my own world";
+uint8_t stext[chunk_size] = "This is me, and my own world";
 uint8_t rtext[100];
 /* USER CODE END 0 */
 
@@ -109,7 +109,7 @@ uint8_t rtext[100];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	//HalfKBWrite(wtext,chunk_mult);
+	HalfKBWrite(stext,chunk_mult);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -182,48 +182,49 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-
-	int looper = 0;
-	char str[80]={0};
+//	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
+//
+//	int looper = 0;
+//	char str[80]={0};
+  Error_Handler();
     while (1)
   {
-	int timestart = 0;
-	int timestop = 0;
-	looper++;
-  	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
-
-  	OpenSD(file_name,a);
-
-	for(int a = 0 ; a<10;a++)
-	{
-		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-		timestart = HAL_GetTick();
-	  	//sprintf(wtext, "%d",a);
-		WriteSD(wtext,chunk_size,&byteswritten);
-		timestop = HAL_GetTick();
-		HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
-	}
-	CloseSD();
-	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-
-	OpenSD(file_name,a);
-	sprintf(text, "\n");
-	WriteSD(text,strlen((char *)text),&byteswritten);
-	CloseSD();
-
-	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
-	if(looper == 2){
-		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-		WriteTime();
-	  	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
-		CloseSD();
-		while(1){
-			HAL_Delay(100);
-			HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-
-		}
-	}
+//	int timestart = 0;
+//	int timestop = 0;
+//	looper++;
+//  	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
+//
+//  	OpenSD(file_name,a);
+//
+//	for(int a = 0 ; a<10;a++)
+//	{
+//		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
+//		timestart = HAL_GetTick();
+//	  	//sprintf(wtext, "%d",a);
+//		WriteSD(wtext,chunk_size,&byteswritten);
+//		timestop = HAL_GetTick();
+//		HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
+//	}
+//	CloseSD();
+//	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
+//
+//	OpenSD(file_name,a);
+//	sprintf(text, "\n");
+//	WriteSD(text,strlen((char *)text),&byteswritten);
+//	CloseSD();
+//
+//	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
+//	if(looper == 2){
+//		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
+//		WriteTime();
+//	  	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
+//		CloseSD();
+//		while(1){
+//			HAL_Delay(100);
+//			HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
+//
+//		}
+//	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -541,31 +542,19 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-static void SD_Initialize(void)
-{
-  if (isInitialized == 0)
-  {
-    BSP_SD_Init();
-
-    if(BSP_SD_IsDetected())
-    {
-      isInitialized = 1;
-    }
-  }
-}
-
 
 void WriteTime()
 {
-	if(f_open(&SDFile, "STM32.TXT", FA_OPEN_APPEND | FA_WRITE) != FR_OK)
+	res = f_open(&SDFile, "STM.TXT", aPLUS);
+	if(res != FR_OK)
 	{
 		Error_Handler();
 	}
-		sprintf(text, "\n#######################%u\n",HAL_GetTick());
-		res = f_write(&SDFile, text, strlen((char *)text), (void *)&byteswritten);
+	sprintf(text, "\n#######################%u\n",HAL_GetTick());
+	res = f_write(&SDFile, text, strlen((char *)text), (void *)&byteswritten);
 	if((byteswritten == 0) || (res != FR_OK))
 	{
-		Error_Handler();
+
 	}
 	else
 	{
@@ -575,61 +564,42 @@ void WriteTime()
 
 
 
-static void FS_FileOperations(void)
+static void FS_MOUNT(void)
 {
-  FRESULT res;                                          /* FatFs function common result code */
-  uint32_t byteswritten, bytesread;                     /* File write/read counts */
-  uint8_t wtext[] = "This is STM32 working with FatFs uSD + FreeRTOS"; /* File write buffer */
-
-  /* Register the file system object to the FatFs module */
-  if(f_mount(&SDFatFS, (TCHAR const*)SDPath, 0) == FR_OK)
-  {
-    /* check whether the FS has been already created */
-    if (isFsCreated == 0)
-    {
-      if(f_mkfs(SDPath, FM_ANY, 0, workBuffer, sizeof(workBuffer)) != FR_OK)
-      {
-
-        return;
-      }
-      isFsCreated = 1;
-    }
-    /* Create and Open a new text file object with write access */
-    if(f_open(&SDFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
-    {
-      /* Write data to the text file */
-      res = f_write(&SDFile, wtext, sizeof(wtext), (void *)&byteswritten);
-
-      if((byteswritten > 0) && (res == FR_OK))
-      {
-        /* Close the open text file */
-        f_close(&SDFile);
-
-        /* Open the text file object with read access */
-        if(f_open(&SDFile, "STM32.TXT", FA_READ) == FR_OK)
-        {
-          /* Read data from the text file */
-          res = f_read(&SDFile, rtext, sizeof(rtext), (void *)&bytesread);
-
-          if((bytesread > 0) && (res == FR_OK))
-          {
-            /* Close the open text file */
-            f_close(&SDFile);
-
-            /* Compare read data with the expected data */
-            if((bytesread == byteswritten))
-            {
-              /* Success of the demo: no error occurrence */
-              return;
-            }
-          }
-        }
-      }
-    }
-  }
-  /* Error */
+	res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
+	if(res == FR_OK)
+	{
+		/* check whether the FS has been already created */
+		if (isFsCreated == 0)
+		{
+			res = f_mkfs(SDPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
+			if(res != FR_OK)
+			{
+				Error_Handler();
+			}
+		isFsCreated = 1;
+		}
+	}
 }
 
+static void FS_SPAM(void)
+{
+	res = f_open(&SDFile, "STM32.BIN", aPLUS);
+	if(res == FR_OK)
+	{
+		for(int repeat = 0; repeat<100; repeat++)
+		{
+			/* Write data to the text file */
+			res = f_write(&SDFile, stext, sizeof(stext), (void *)&byteswritten);
+		}
+
+		if((byteswritten > 0) && (res == FR_OK))
+		{
+			/* Close the open text file */
+			f_close(&SDFile);
+		}
+	}
+}
 
 
 //void MX_FATFS_Init(void)
@@ -650,10 +620,19 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN 5 */
 	//res = f_mkfs(SDPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
   /* Infinite loop */
+	FS_MOUNT();
   for(;;)
   {
-	FS_FileOperations();
-    osDelay(1000);
+	//FS_FileOperations();
+	  HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
+	  WriteTime();
+	  FS_SPAM();
+	  WriteTime();
+	  HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
+	  osDelay(1000);
+	  WriteTime();
+	  HAL_GPIO_WritePin(LED_RED_GPIO_Port,LED_RED_Pin,SET);
+	  osDelay(1);
   }
   /* USER CODE END 5 */
 }
