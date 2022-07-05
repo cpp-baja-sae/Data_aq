@@ -32,7 +32,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define chunk_mult 1
+#define chunk_mult 8
 #define chunk_size 512*chunk_mult
 /* USER CODE END PTD */
 
@@ -61,7 +61,14 @@ osThreadId_t SD_INTHandle;
 const osThreadAttr_t SD_INT_attributes = {
   .name = "SD_INT",
   .stack_size = 8192 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityBelowNormal7,
+};
+/* Definitions for TimeCal */
+osThreadId_t TimeCalHandle;
+const osThreadAttr_t TimeCal_attributes = {
+  .name = "TimeCal",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
 uint8_t workBuffer[_MAX_SS];
@@ -75,6 +82,7 @@ static void MX_MDMA_Init(void);
 static void MX_SDMMC1_SD_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
 void StartDefaultTask(void *argument);
+void StartTimeCal(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -166,6 +174,9 @@ int main(void)
   /* Create the thread(s) */
   /* creation of SD_INT */
   SD_INTHandle = osThreadNew(StartDefaultTask, NULL, &SD_INT_attributes);
+
+  /* creation of TimeCal */
+  TimeCalHandle = osThreadNew(StartTimeCal, NULL, &TimeCal_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -259,11 +270,11 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 44;
+  RCC_OscInitStruct.PLL.PLLN = 275;
   RCC_OscInitStruct.PLL.PLLP = 1;
   RCC_OscInitStruct.PLL.PLLQ = 11;
   RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
   RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -309,7 +320,7 @@ static void MX_SDMMC1_SD_Init(void)
   hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_ENABLE;
   hsd1.Init.BusWide = SDMMC_BUS_WIDE_4B;
   hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd1.Init.ClockDiv = 2;
+  hsd1.Init.ClockDiv = 1;
   /* USER CODE BEGIN SDMMC1_Init 2 */
   __HAL_RCC_SDMMC1_FORCE_RESET();
   __HAL_RCC_SDMMC1_RELEASE_RESET();
@@ -447,12 +458,15 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LED_GREEN_Pin|LED_RED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(TimeCal_GPIO_Port, TimeCal_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
@@ -488,6 +502,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : TimeCal_Pin */
+  GPIO_InitStruct.Pin = TimeCal_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(TimeCal_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RMII_TXD1_Pin */
   GPIO_InitStruct.Pin = RMII_TXD1_Pin;
@@ -635,6 +656,25 @@ void StartDefaultTask(void *argument)
 	  osDelay(1);
   }
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartTimeCal */
+/**
+* @brief Function implementing the TimeCal thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTimeCal */
+void StartTimeCal(void *argument)
+{
+  /* USER CODE BEGIN StartTimeCal */
+  /* Infinite loop */
+  for(;;)
+  {
+	  HAL_GPIO_TogglePin(TimeCal_GPIO_Port,TimeCal_Pin);
+    osDelay(1);
+  }
+  /* USER CODE END StartTimeCal */
 }
 
 /**
