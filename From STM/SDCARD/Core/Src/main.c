@@ -32,7 +32,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define chunk_mult 8
+#define chunk_mult 64
 #define chunk_size 512*chunk_mult
 /* USER CODE END PTD */
 
@@ -46,7 +46,7 @@ static void FS_MOUNT(void);
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 static uint8_t isInitialized = 0;
-static uint8_t isFsCreated = 0;
+static uint8_t isFsCreated = 1;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -144,12 +144,8 @@ int main(void)
   MX_FATFS_Init();
   MX_USB_OTG_HS_USB_Init();
   /* USER CODE BEGIN 2 */
-  //SD_Initialize();
 
 	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
-	//MountSD();
-	//WriteTime();
-	//MX_FATFS_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -193,49 +189,12 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-//	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-//
-//	int looper = 0;
-//	char str[80]={0};
+//  char str[80]={0};
+//  HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
   Error_Handler();
     while (1)
   {
-//	int timestart = 0;
-//	int timestop = 0;
-//	looper++;
-//  	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
-//
-//  	OpenSD(file_name,a);
-//
-//	for(int a = 0 ; a<10;a++)
-//	{
-//		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-//		timestart = HAL_GetTick();
-//	  	//sprintf(wtext, "%d",a);
-//		WriteSD(wtext,chunk_size,&byteswritten);
-//		timestop = HAL_GetTick();
-//		HAL_UART_Transmit(&huart3, (uint8_t*)str, sprintf(str, "time taken %d \r\n", timestop-timestart), 10);
-//	}
-//	CloseSD();
-//	HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-//
-//	OpenSD(file_name,a);
-//	sprintf(text, "\n");
-//	WriteSD(text,strlen((char *)text),&byteswritten);
-//	CloseSD();
-//
-//	HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,RESET);
-//	if(looper == 2){
-//		HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-//		WriteTime();
-//	  	HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
-//		CloseSD();
-//		while(1){
-//			HAL_Delay(100);
-//			HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-//
-//		}
-//	}
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -261,6 +220,9 @@ void SystemClock_Config(void)
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
+  /** Macro to configure the PLL clock source
+  */
+  __HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSE);
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -272,7 +234,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 275;
   RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 11;
+  RCC_OscInitStruct.PLL.PLLQ = 5;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
@@ -639,12 +601,14 @@ static void FS_SPAM(void)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+	int counter = 0;
 	//res = f_mkfs(SDPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
   /* Infinite loop */
 	FS_MOUNT();
   for(;;)
   {
 	//FS_FileOperations();
+	  counter++;
 	  HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port,LED_YELLOW_Pin,SET);
 	  WriteTime();
 	  FS_SPAM();
@@ -654,6 +618,9 @@ void StartDefaultTask(void *argument)
 	  WriteTime();
 	  HAL_GPIO_WritePin(LED_RED_GPIO_Port,LED_RED_Pin,SET);
 	  osDelay(1);
+	  if(counter>=1){
+		  osDelay(10000);
+	  }
   }
   /* USER CODE END 5 */
 }
