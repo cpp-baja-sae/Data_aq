@@ -1,0 +1,14 @@
+main.c:134:5:main	8	static
+main.c:221:6:SystemClock_Config	120	static
+main.c:281:13:MX_ETH_Init	8	static
+main.c:330:13:MX_SDMMC1_SD_Init	4	static
+main.c:358:13:MX_USART3_UART_Init	8	static
+main.c:406:13:MX_USB_OTG_HS_USB_Init	4	static
+main.c:427:13:MX_MDMA_Init	16	static
+main.c:474:13:MX_GPIO_Init	56	static
+main.c:547:6:WriteTime	8	static
+main.c:568:13:FS_MOUNT	16	static
+main.c:586:13:FS_SPAM	16	static
+main.c:614:6:StartSDCardTask	24	static
+main.c:644:6:HAL_TIM_PeriodElapsedCallback	16	static
+main.c:661:6:Error_Handler	8	static,ignoring_inline_asm
