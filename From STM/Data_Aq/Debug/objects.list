@@ -2,6 +2,7 @@
 "./Core/Src/helpercmd.o"
 "./Core/Src/main.o"
 "./Core/Src/stm32h7xx_hal_msp.o"
+"./Core/Src/stm32h7xx_hal_ospi.o"
 "./Core/Src/stm32h7xx_hal_timebase_tim.o"
 "./Core/Src/stm32h7xx_it.o"
 "./Core/Src/syscalls.o"

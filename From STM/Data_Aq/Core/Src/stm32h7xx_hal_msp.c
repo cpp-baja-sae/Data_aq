@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
+extern MDMA_HandleTypeDef hmdma_octospi1_fifo_th;
+
 extern DMA_HandleTypeDef hdma_tim2_ch1;
 
 /* Private typedef -----------------------------------------------------------*/
@@ -194,6 +196,167 @@ void HAL_ETH_MspDeInit(ETH_HandleTypeDef* heth)
 }
 
 /**
+* @brief OSPI MSP Initialization
+* This function configures the hardware resources used in this example
+* @param hospi: OSPI handle pointer
+* @retval None
+*/
+void HAL_OSPI_MspInit(OSPI_HandleTypeDef* hospi)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(hospi->Instance==OCTOSPI1)
+  {
+  /* USER CODE BEGIN OCTOSPI1_MspInit 0 */
+
+  /* USER CODE END OCTOSPI1_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_OCTOSPIM_CLK_ENABLE();
+    __HAL_RCC_OSPI1_CLK_ENABLE();
+
+    __HAL_RCC_GPIOE_CLK_ENABLE();
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    /**OCTOSPI1 GPIO Configuration
+    PE2     ------> OCTOSPIM_P1_IO2
+    PF6     ------> OCTOSPIM_P1_IO3
+    PF8     ------> OCTOSPIM_P1_IO0
+    PF9     ------> OCTOSPIM_P1_IO1
+    PF10     ------> OCTOSPIM_P1_CLK
+    PC2_C     ------> OCTOSPIM_P1_IO5
+    PC3_C     ------> OCTOSPIM_P1_IO6
+    PE7     ------> OCTOSPIM_P1_IO4
+    PE10     ------> OCTOSPIM_P1_IO7
+    PE11     ------> OCTOSPIM_P1_NCS
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_2;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF9_OCTOSPIM_P1;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_8|GPIO_PIN_9;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OCTOSPIM_P1;
+    HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF9_OCTOSPIM_P1;
+    HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF4_OCTOSPIM_P1;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OCTOSPIM_P1;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_11;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF11_OCTOSPIM_P1;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+    /* OCTOSPI1 MDMA Init */
+    /* OCTOSPI1_FIFO_TH Init */
+    hmdma_octospi1_fifo_th.Instance = MDMA_Channel1;
+    hmdma_octospi1_fifo_th.Init.Request = MDMA_REQUEST_OCTOSPI1_FIFO_TH;
+    hmdma_octospi1_fifo_th.Init.TransferTriggerMode = MDMA_BUFFER_TRANSFER;
+    hmdma_octospi1_fifo_th.Init.Priority = MDMA_PRIORITY_LOW;
+    hmdma_octospi1_fifo_th.Init.Endianness = MDMA_LITTLE_ENDIANNESS_PRESERVE;
+    hmdma_octospi1_fifo_th.Init.SourceInc = MDMA_SRC_INC_DOUBLEWORD;
+    hmdma_octospi1_fifo_th.Init.DestinationInc = MDMA_DEST_INC_DOUBLEWORD;
+    hmdma_octospi1_fifo_th.Init.SourceDataSize = MDMA_SRC_DATASIZE_WORD;
+    hmdma_octospi1_fifo_th.Init.DestDataSize = MDMA_DEST_DATASIZE_WORD;
+    hmdma_octospi1_fifo_th.Init.DataAlignment = MDMA_DATAALIGN_PACKENABLE;
+    hmdma_octospi1_fifo_th.Init.BufferTransferLength = 1;
+    hmdma_octospi1_fifo_th.Init.SourceBurst = MDMA_SOURCE_BURST_SINGLE;
+    hmdma_octospi1_fifo_th.Init.DestBurst = MDMA_DEST_BURST_SINGLE;
+    hmdma_octospi1_fifo_th.Init.SourceBlockAddressOffset = 0;
+    hmdma_octospi1_fifo_th.Init.DestBlockAddressOffset = 0;
+    if (HAL_MDMA_Init(&hmdma_octospi1_fifo_th) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    if (HAL_MDMA_ConfigPostRequestMask(&hmdma_octospi1_fifo_th, 0, 0) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(hospi,hmdma,hmdma_octospi1_fifo_th);
+
+    /* OCTOSPI1 interrupt Init */
+    HAL_NVIC_SetPriority(OCTOSPI1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(OCTOSPI1_IRQn);
+  /* USER CODE BEGIN OCTOSPI1_MspInit 1 */
+
+  /* USER CODE END OCTOSPI1_MspInit 1 */
+  }
+
+}
+
+/**
+* @brief OSPI MSP De-Initialization
+* This function freeze the hardware resources used in this example
+* @param hospi: OSPI handle pointer
+* @retval None
+*/
+void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef* hospi)
+{
+  if(hospi->Instance==OCTOSPI1)
+  {
+  /* USER CODE BEGIN OCTOSPI1_MspDeInit 0 */
+
+  /* USER CODE END OCTOSPI1_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_OCTOSPIM_CLK_DISABLE();
+    __HAL_RCC_OSPI1_CLK_DISABLE();
+
+    /**OCTOSPI1 GPIO Configuration
+    PE2     ------> OCTOSPIM_P1_IO2
+    PF6     ------> OCTOSPIM_P1_IO3
+    PF8     ------> OCTOSPIM_P1_IO0
+    PF9     ------> OCTOSPIM_P1_IO1
+    PF10     ------> OCTOSPIM_P1_CLK
+    PC2_C     ------> OCTOSPIM_P1_IO5
+    PC3_C     ------> OCTOSPIM_P1_IO6
+    PE7     ------> OCTOSPIM_P1_IO4
+    PE10     ------> OCTOSPIM_P1_IO7
+    PE11     ------> OCTOSPIM_P1_NCS
+    */
+    HAL_GPIO_DeInit(GPIOE, GPIO_PIN_2|GPIO_PIN_7|GPIO_PIN_10|GPIO_PIN_11);
+
+    HAL_GPIO_DeInit(GPIOF, GPIO_PIN_6|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10);
+
+    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_2|GPIO_PIN_3);
+
+    /* OCTOSPI1 MDMA DeInit */
+    HAL_MDMA_DeInit(hospi->hmdma);
+
+    /* OCTOSPI1 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(OCTOSPI1_IRQn);
+  /* USER CODE BEGIN OCTOSPI1_MspDeInit 1 */
+
+  /* USER CODE END OCTOSPI1_MspDeInit 1 */
+  }
+
+}
+
+/**
 * @brief SD MSP Initialization
 * This function configures the hardware resources used in this example
 * @param hsd: SD handle pointer
@@ -202,29 +365,11 @@ void HAL_ETH_MspDeInit(ETH_HandleTypeDef* heth)
 void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
   if(hsd->Instance==SDMMC1)
   {
   /* USER CODE BEGIN SDMMC1_MspInit 0 */
 
   /* USER CODE END SDMMC1_MspInit 0 */
-  /** Initializes the peripherals clock
-  */
-    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
-    PeriphClkInitStruct.PLL2.PLL2M = 1;
-    PeriphClkInitStruct.PLL2.PLL2N = 25;
-    PeriphClkInitStruct.PLL2.PLL2P = 2;
-    PeriphClkInitStruct.PLL2.PLL2Q = 2;
-    PeriphClkInitStruct.PLL2.PLL2R = 2;
-    PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
-    PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
-    PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-    PeriphClkInitStruct.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
     /* Peripheral clock enable */
     __HAL_RCC_SDMMC1_CLK_ENABLE();
 

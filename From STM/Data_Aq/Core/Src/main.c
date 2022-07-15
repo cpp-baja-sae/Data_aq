@@ -76,6 +76,9 @@ ETH_TxPacketConfig TxConfig;
 
 ETH_HandleTypeDef heth;
 
+OSPI_HandleTypeDef hospi1;
+MDMA_HandleTypeDef hmdma_octospi1_fifo_th;
+
 SD_HandleTypeDef hsd1;
 
 TIM_HandleTypeDef htim2;
@@ -89,7 +92,14 @@ osThreadId_t SDCardHandle;
 const osThreadAttr_t SDCard_attributes = {
   .name = "SDCard",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityNormal2,
+};
+/* Definitions for ServiceADC */
+osThreadId_t ServiceADCHandle;
+const osThreadAttr_t ServiceADC_attributes = {
+  .name = "ServiceADC",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
 };
 /* USER CODE BEGIN PV */
 
@@ -97,6 +107,7 @@ const osThreadAttr_t SDCard_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ETH_Init(void);
 static void MX_MDMA_Init(void);
@@ -105,10 +116,12 @@ static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
+static void MX_OCTOSPI1_Init(void);
 void StartSDCardTask(void *argument);
+void StartServiceADC(void *argument);
 
 /* USER CODE BEGIN PFP */
-
+void EnableMemMappedQuadMode(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -128,6 +141,7 @@ uint8_t stext[chunk_size] = "This is me, and my own world";
 uint8_t rtext[100];
 
 uint8_t workBuffer[_MAX_SS];
+uint8_t pData[65]={0};
 
 static uint8_t isFsCreated = 1;
 /* USER CODE END 0 */
@@ -140,6 +154,10 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   HalfKBWrite((char *)stext,chunk_mult);
+  for(int i = 0; i <65;i++)
+  {
+  	  pData[i]=i;
+  }
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -153,6 +171,9 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
+
+/* Configure the peripherals common clocks */
+  PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
 
@@ -168,7 +189,9 @@ int main(void)
   MX_TIM2_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_HS_USB_Init();
+  MX_OCTOSPI1_Init();
   /* USER CODE BEGIN 2 */
+  EnableMemMappedQuadMode();
   TIM2->CCR1 = 2;
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
   HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
@@ -194,9 +217,11 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-
   /* creation of SDCard */
   SDCardHandle = osThreadNew(StartSDCardTask, NULL, &SDCard_attributes);
+
+  /* creation of ServiceADC */
+  ServiceADCHandle = osThreadNew(StartServiceADC, NULL, &ServiceADC_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -284,6 +309,33 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief Peripherals Common Clock Configuration
+  * @retval None
+  */
+void PeriphCommonClock_Config(void)
+{
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_OSPI|RCC_PERIPHCLK_SDMMC;
+  PeriphClkInitStruct.PLL2.PLL2M = 1;
+  PeriphClkInitStruct.PLL2.PLL2N = 25;
+  PeriphClkInitStruct.PLL2.PLL2P = 2;
+  PeriphClkInitStruct.PLL2.PLL2Q = 2;
+  PeriphClkInitStruct.PLL2.PLL2R = 2;
+  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
+  PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+  PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+  PeriphClkInitStruct.OspiClockSelection = RCC_OSPICLKSOURCE_PLL2;
+  PeriphClkInitStruct.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
   * @brief ETH Initialization Function
   * @param None
   * @retval None
@@ -329,6 +381,59 @@ static void MX_ETH_Init(void)
   /* USER CODE BEGIN ETH_Init 2 */
 
   /* USER CODE END ETH_Init 2 */
+
+}
+
+/**
+  * @brief OCTOSPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_OCTOSPI1_Init(void)
+{
+
+  /* USER CODE BEGIN OCTOSPI1_Init 0 */
+
+  /* USER CODE END OCTOSPI1_Init 0 */
+
+  OSPIM_CfgTypeDef sOspiManagerCfg = {0};
+
+  /* USER CODE BEGIN OCTOSPI1_Init 1 */
+
+  /* USER CODE END OCTOSPI1_Init 1 */
+  /* OCTOSPI1 parameter configuration*/
+  hospi1.Instance = OCTOSPI1;
+  hospi1.Init.FifoThreshold = 1;
+  hospi1.Init.DualQuad = HAL_OSPI_DUALQUAD_DISABLE;
+  hospi1.Init.MemoryType = HAL_OSPI_MEMTYPE_MICRON;
+  hospi1.Init.DeviceSize = 8;
+  hospi1.Init.ChipSelectHighTime = 1;
+  hospi1.Init.FreeRunningClock = HAL_OSPI_FREERUNCLK_DISABLE;
+  hospi1.Init.ClockMode = HAL_OSPI_CLOCK_MODE_0;
+  hospi1.Init.WrapSize = HAL_OSPI_WRAP_NOT_SUPPORTED;
+  hospi1.Init.ClockPrescaler = 50;
+  hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_NONE;
+  hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_DISABLE;
+  hospi1.Init.ChipSelectBoundary = 0;
+  hospi1.Init.ClkChipSelectHighTime = 0;
+  hospi1.Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_BYPASSED;
+  hospi1.Init.MaxTran = 0;
+  hospi1.Init.Refresh = 0;
+  if (HAL_OSPI_Init(&hospi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sOspiManagerCfg.ClkPort = 1;
+  sOspiManagerCfg.NCSPort = 1;
+  sOspiManagerCfg.IOLowPort = HAL_OSPIM_IOPORT_1_LOW;
+  sOspiManagerCfg.IOHighPort = HAL_OSPIM_IOPORT_1_HIGH;
+  if (HAL_OSPIM_Config(&hospi1, &sOspiManagerCfg, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN OCTOSPI1_Init 2 */
+
+  /* USER CODE END OCTOSPI1_Init 2 */
 
 }
 
@@ -489,7 +594,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Stream1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 
 }
@@ -551,16 +656,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LED_GREEN_Pin|LED_RED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(Dummy_Data_GPIO_Port, Dummy_Data_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
@@ -580,6 +689,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Dummy_Data_Pin */
+  GPIO_InitStruct.Pin = Dummy_Data_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(Dummy_Data_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_FS_PWR_EN_Pin */
   GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin;
@@ -677,6 +793,46 @@ static void FS_SPAM(void)
 	}
 }
 
+
+void EnableMemMappedQuadMode(void)
+{
+	OSPI_RegularCmdTypeDef sCommand;
+	HAL_StatusTypeDef res;
+//	OSPI_MemoryMappedTypeDef sMemMappedCfg;
+
+	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
+	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE;
+
+	sCommand.FlashId = HAL_OSPI_FLASH_ID_1;
+	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_NONE;
+	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
+	// sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
+	// sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
+	// sCommand.Instruction = 0;
+
+	sCommand.AddressMode = HAL_OSPI_ADDRESS_NONE;
+	// sCommand.AddressSize = HAL_OSPI_ADDRESS_8_BITS;
+	// sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
+	// sCommand.Address = 0xF;
+	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
+
+	sCommand.DataMode = HAL_OSPI_DATA_8_LINES;
+	// Using Single Data Rate (SDR)
+	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
+	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_ONLY_FIRST_CMD;
+
+	sCommand.NbData = 64;
+	sCommand.DummyCycles = 0;
+
+	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	if (res != HAL_OK)
+	{
+		Error_Handler();
+	}
+}
+
+
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartSDCardTask */
@@ -690,7 +846,9 @@ void StartSDCardTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 	int counter = 0;
+	vTaskSuspend(ServiceADCHandle);
 	FS_MOUNT();
+	vTaskResume(ServiceADCHandle);
   /* Infinite loop */
   for(;;)
   {
@@ -706,6 +864,28 @@ void StartSDCardTask(void *argument)
 	}
   }
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartServiceADC */
+/**
+* @brief Function implementing the ServiceADC thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartServiceADC */
+void StartServiceADC(void *argument)
+{
+  /* USER CODE BEGIN StartServiceADC */
+	//vTaskSuspend(NULL);
+  /* Infinite loop */
+  for(;;)
+  {
+	res = HAL_OSPI_Receive(&hospi1,pData ,HAL_MAX_DELAY-1);
+	if(res !=HAL_OK) Error_Handler();
+	hospi1.State = HAL_OSPI_STATE_CMD_CFG;
+	osDelay(10);
+  }
+  /* USER CODE END StartServiceADC */
 }
 
 /**
