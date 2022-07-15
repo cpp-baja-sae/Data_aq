@@ -172,21 +172,6 @@ int main(void)
   TIM2->CCR1 = 2;
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
   HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
-  uint16_t PinState = 0;
-  while(1){
-	  //LED_GREEN_GPIO_Port->BSRR != LED_GREEN_GPIO_Port->BSRR;
-
-	  if (PinState != GPIO_PIN_RESET)
-	  {
-		  PinState = 0;
-		  LED_GREEN_GPIO_Port->BSRR = LED_GREEN_Pin;
-	  }
-	  else
-	  {
-		  PinState = 1;
-		  LED_GREEN_GPIO_Port->BSRR = (uint32_t)LED_GREEN_Pin << 16;
-	  }
-  }
   /* USER CODE END 2 */
 
   /* Init scheduler */
