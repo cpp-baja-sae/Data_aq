@@ -49,8 +49,6 @@ extern "C" {
 
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -61,6 +59,18 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define B1_Pin GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
+#define ADC_BUSY_1_Pin GPIO_PIN_0
+#define ADC_BUSY_1_GPIO_Port GPIOF
+#define ADC_BUSY_2_Pin GPIO_PIN_1
+#define ADC_BUSY_2_GPIO_Port GPIOF
+#define ADC_BUSY_3_Pin GPIO_PIN_2
+#define ADC_BUSY_3_GPIO_Port GPIOF
+#define ADC_OS0_Pin GPIO_PIN_3
+#define ADC_OS0_GPIO_Port GPIOF
+#define ADC_OS1_Pin GPIO_PIN_4
+#define ADC_OS1_GPIO_Port GPIOF
+#define ADC_OS2_Pin GPIO_PIN_5
+#define ADC_OS2_GPIO_Port GPIOF
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
 #define RMII_MDC_Pin GPIO_PIN_1
@@ -77,6 +87,8 @@ void Error_Handler(void);
 #define RMII_RXD1_GPIO_Port GPIOC
 #define LED_GREEN_Pin GPIO_PIN_0
 #define LED_GREEN_GPIO_Port GPIOB
+#define ADC_RESET_Pin GPIO_PIN_0
+#define ADC_RESET_GPIO_Port GPIOG
 #define Dummy_Data_Pin GPIO_PIN_1
 #define Dummy_Data_GPIO_Port GPIOG
 #define RMII_TXD1_Pin GPIO_PIN_13
@@ -103,6 +115,10 @@ void Error_Handler(void);
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
+#define ADC_CONV_AB_Pin GPIO_PIN_0
+#define ADC_CONV_AB_GPIO_Port GPIOD
+#define ADC_CS_Pin GPIO_PIN_1
+#define ADC_CS_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOG
 #define RMII_TXD0_Pin GPIO_PIN_13

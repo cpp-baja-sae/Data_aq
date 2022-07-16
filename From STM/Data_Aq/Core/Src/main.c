@@ -28,6 +28,7 @@
 #include "SDInterface.h"
 #include "string.h"
 #include "stdio.h"
+#include "ADS8588H.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -81,8 +82,7 @@ MDMA_HandleTypeDef hmdma_octospi1_fifo_th;
 
 SD_HandleTypeDef hsd1;
 
-TIM_HandleTypeDef htim2;
-DMA_HandleTypeDef hdma_tim2_ch1;
+TIM_HandleTypeDef htim13;
 
 UART_HandleTypeDef huart3;
 
@@ -112,11 +112,10 @@ static void MX_GPIO_Init(void);
 static void MX_ETH_Init(void);
 static void MX_MDMA_Init(void);
 static void MX_SDMMC1_SD_Init(void);
-static void MX_DMA_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
 static void MX_OCTOSPI1_Init(void);
+static void MX_TIM13_Init(void);
 void StartSDCardTask(void *argument);
 void StartServiceADC(void *argument);
 
@@ -144,6 +143,9 @@ uint8_t workBuffer[_MAX_SS];
 uint8_t pData[65]={0};
 
 static uint8_t isFsCreated = 1;
+
+ADS8588H_Interface_t ADC;
+
 /* USER CODE END 0 */
 
 /**
@@ -185,15 +187,29 @@ int main(void)
   MX_MDMA_Init();
   MX_SDMMC1_SD_Init();
   MX_FATFS_Init();
-  MX_DMA_Init();
-  MX_TIM2_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_HS_USB_Init();
   MX_OCTOSPI1_Init();
+  MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
   EnableMemMappedQuadMode();
-  TIM2->CCR1 = 2;
-  HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
+  ADS8588H_Init_Struct(&ADC,
+		  &htim13,
+		  ADC_RESET_GPIO_Port,	ADC_RESET_Pin,
+		  ADC_CONV_AB_GPIO_Port,	ADC_CONV_AB_Pin,
+		  ADC_CS_GPIO_Port,		ADC_CS_Pin,
+		  ADC_BUSY_1_GPIO_Port,	ADC_BUSY_1_Pin,
+		  ADC_BUSY_2_GPIO_Port,	ADC_BUSY_2_Pin,
+		  ADC_BUSY_3_GPIO_Port,	ADC_BUSY_3_Pin,
+		  ADC_OS0_GPIO_Port,	ADC_OS0_Pin,
+		  ADC_OS1_GPIO_Port,	ADC_OS1_Pin,
+		  ADC_OS2_GPIO_Port,	ADC_OS2_Pin,
+		  OSR_64,
+		  &hospi1
+		  );
+  ADS8588H_Init(&ADC);
+
+
   HAL_GPIO_WritePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin,SET);
   /* USER CODE END 2 */
 
@@ -411,7 +427,7 @@ static void MX_OCTOSPI1_Init(void)
   hospi1.Init.FreeRunningClock = HAL_OSPI_FREERUNCLK_DISABLE;
   hospi1.Init.ClockMode = HAL_OSPI_CLOCK_MODE_0;
   hospi1.Init.WrapSize = HAL_OSPI_WRAP_NOT_SUPPORTED;
-  hospi1.Init.ClockPrescaler = 50;
+  hospi1.Init.ClockPrescaler = 30;
   hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_NONE;
   hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_DISABLE;
   hospi1.Init.ChipSelectBoundary = 0;
@@ -466,51 +482,47 @@ static void MX_SDMMC1_SD_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
+  * @brief TIM13 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM2_Init(void)
+static void MX_TIM13_Init(void)
 {
 
-  /* USER CODE BEGIN TIM2_Init 0 */
+  /* USER CODE BEGIN TIM13_Init 0 */
 
-  /* USER CODE END TIM2_Init 0 */
+  /* USER CODE END TIM13_Init 0 */
 
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
 
-  /* USER CODE BEGIN TIM2_Init 1 */
+  /* USER CODE BEGIN TIM13_Init 1 */
 
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 5-1;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4-1;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  /* USER CODE END TIM13_Init 1 */
+  htim13.Instance = TIM13;
+  htim13.Init.Prescaler = 275-1;
+  htim13.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim13.Init.Period = 65535;
+  htim13.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim13.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim13) != HAL_OK)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  if (HAL_TIM_OC_Init(&htim13) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  if (HAL_TIM_OC_ConfigChannel(&htim13, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM2_Init 2 */
+  /* USER CODE BEGIN TIM13_Init 2 */
 
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
+  /* USER CODE END TIM13_Init 2 */
 
 }
 
@@ -584,22 +596,6 @@ static void MX_USB_OTG_HS_USB_Init(void)
 }
 
 /**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Stream1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
-
-}
-
-/**
   * Enable MDMA controller clock
   * Configure MDMA for global transfers
   *   hmdma_mdma_channel40_sdmmc1_end_data_0
@@ -666,13 +662,22 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOF, ADC_OS0_Pin|ADC_OS1_Pin|ADC_OS2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LED_GREEN_Pin|LED_RED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(ADC_RESET_GPIO_Port, ADC_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Dummy_Data_GPIO_Port, Dummy_Data_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, ADC_CONV_AB_Pin|ADC_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin, GPIO_PIN_RESET);
@@ -683,12 +688,32 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : ADC_BUSY_1_Pin ADC_BUSY_2_Pin ADC_BUSY_3_Pin */
+  GPIO_InitStruct.Pin = ADC_BUSY_1_Pin|ADC_BUSY_2_Pin|ADC_BUSY_3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : ADC_OS0_Pin ADC_OS1_Pin ADC_OS2_Pin */
+  GPIO_InitStruct.Pin = ADC_OS0_Pin|ADC_OS1_Pin|ADC_OS2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
   /*Configure GPIO pins : LED_GREEN_Pin LED_RED_Pin */
   GPIO_InitStruct.Pin = LED_GREEN_Pin|LED_RED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ADC_RESET_Pin */
+  GPIO_InitStruct.Pin = ADC_RESET_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADC_RESET_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : Dummy_Data_Pin */
   GPIO_InitStruct.Pin = Dummy_Data_Pin;
@@ -697,12 +722,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(Dummy_Data_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : USB_FS_PWR_EN_Pin */
-  GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin;
+  /*Configure GPIO pins : USB_FS_PWR_EN_Pin ADC_CONV_AB_Pin ADC_CS_Pin */
+  GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin|ADC_CONV_AB_Pin|ADC_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(USB_FS_PWR_EN_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_FS_OVCR_Pin */
   GPIO_InitStruct.Pin = USB_FS_OVCR_Pin;
@@ -845,6 +870,8 @@ void EnableMemMappedQuadMode(void)
 void StartSDCardTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+	// Disable SD card task when integrating ADC
+	vTaskSuspend(NULL);
 	int counter = 0;
 	vTaskSuspend(ServiceADCHandle);
 	FS_MOUNT();
@@ -878,12 +905,16 @@ void StartServiceADC(void *argument)
   /* USER CODE BEGIN StartServiceADC */
 	//vTaskSuspend(NULL);
   /* Infinite loop */
+	/*
+	* Perform task every xFrequency ticks
+	*/
+	const TickType_t xFrequency = 1;
+	TickType_t xLastWakeTime;
+	xLastWakeTime = xTaskGetTickCount();
   for(;;)
   {
-	res = HAL_OSPI_Receive(&hospi1,pData ,HAL_MAX_DELAY-1);
-	if(res !=HAL_OK) Error_Handler();
-	hospi1.State = HAL_OSPI_STATE_CMD_CFG;
-	osDelay(10);
+	ADC_SERVICE_ROUTINE(&ADC);
+	vTaskDelayUntil( &xLastWakeTime, xFrequency );
   }
   /* USER CODE END StartServiceADC */
 }

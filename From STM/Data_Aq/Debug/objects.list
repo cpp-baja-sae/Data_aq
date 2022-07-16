@@ -1,3 +1,4 @@
+"./Core/Src/ADS8588H.o"
 "./Core/Src/freertos.o"
 "./Core/Src/helpercmd.o"
 "./Core/Src/main.o"
