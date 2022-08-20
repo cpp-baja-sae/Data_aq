@@ -193,6 +193,7 @@ int main(void)
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
   EnableMemMappedQuadMode();
+  //HAL_GPIO_WritePin(ADC_OS1_GPIO_Port,ADC_OS1_Pin,SET);
   ADS8588H_Init_Struct(&ADC,
 		  &htim13,
 		  ADC_RESET_GPIO_Port,	ADC_RESET_Pin,
@@ -204,7 +205,7 @@ int main(void)
 		  ADC_OS0_GPIO_Port,	ADC_OS0_Pin,
 		  ADC_OS1_GPIO_Port,	ADC_OS1_Pin,
 		  ADC_OS2_GPIO_Port,	ADC_OS2_Pin,
-		  OSR_64,
+		  OSR_32,
 		  &hospi1
 		  );
   ADS8588H_Init(&ADC);
@@ -440,7 +441,6 @@ static void MX_OCTOSPI1_Init(void)
     Error_Handler();
   }
   sOspiManagerCfg.ClkPort = 1;
-  sOspiManagerCfg.NCSPort = 1;
   sOspiManagerCfg.IOLowPort = HAL_OSPIM_IOPORT_1_LOW;
   sOspiManagerCfg.IOHighPort = HAL_OSPIM_IOPORT_1_HIGH;
   if (HAL_OSPIM_Config(&hospi1, &sOspiManagerCfg, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
@@ -674,10 +674,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Dummy_Data_GPIO_Port, Dummy_Data_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, ADC_CONV_AB_Pin|ADC_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(ADC_CONV_AB_GPIO_Port, ADC_CONV_AB_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin, GPIO_PIN_RESET);
@@ -711,7 +714,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : ADC_RESET_Pin */
   GPIO_InitStruct.Pin = ADC_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(ADC_RESET_GPIO_Port, &GPIO_InitStruct);
 
@@ -722,12 +725,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(Dummy_Data_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : USB_FS_PWR_EN_Pin ADC_CONV_AB_Pin ADC_CS_Pin */
-  GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin|ADC_CONV_AB_Pin|ADC_CS_Pin;
+  /*Configure GPIO pin : ADC_CS_Pin */
+  GPIO_InitStruct.Pin = ADC_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADC_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : USB_FS_PWR_EN_Pin */
+  GPIO_InitStruct.Pin = USB_FS_PWR_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+  HAL_GPIO_Init(USB_FS_PWR_EN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_FS_OVCR_Pin */
   GPIO_InitStruct.Pin = USB_FS_OVCR_Pin;
@@ -748,6 +758,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG1_HS;
   HAL_GPIO_Init(USB_FS_ID_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ADC_CONV_AB_Pin */
+  GPIO_InitStruct.Pin = ADC_CONV_AB_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADC_CONV_AB_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED_YELLOW_Pin */
   GPIO_InitStruct.Pin = LED_YELLOW_Pin;

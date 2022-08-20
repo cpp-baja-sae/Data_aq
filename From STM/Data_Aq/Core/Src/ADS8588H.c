@@ -5,6 +5,10 @@
  *      Author: forre
  */
 #include "ADS8588H.h"
+#include "main.h"
+
+
+void convert_data(ADS8588H_Interface_t *ADC);
 
 void ADS8588H_Init_Struct(ADS8588H_Interface_t	*ADC, \
 		TIM_HandleTypeDef	*htim,
@@ -37,10 +41,10 @@ void ADS8588H_Init_Struct(ADS8588H_Interface_t	*ADC, \
 	ADC->OPSI.hopsi = hopsi;
 
 	/*
-	 * From section 7.3.7 of the data sheet
-	 * Configure OSR bits for internal digital filtering
+	 * Load OSR mask
 	 */
-	ADS8588H_OSR_SETUP(ADC);
+
+	ADC->ADC_OSR.OSR = OSR;
 
 	/*
 	 * Link Reset GPIO pins to ADC driver
@@ -104,14 +108,34 @@ void ADS8588H_Time_Delay_Base(ADS8588H_Interface_t *ADC)
 	ADC->ADC_Time.Delay.reset_Delay = DEFAULT_RESET_DELAY;
 }
 
+void ADS8588H_Init(ADS8588H_Interface_t *ADC)
+{
+	/*
+	 * Initialize time delay source
+	 */
+	HAL_TIM_Base_Start(ADC->ADC_Time.ADC_htim);
+
+	/*
+	 * From section 7.3.7 of the data sheet
+	 * Configure OSR bits for internal digital filtering
+	 */
+	ADS8588H_OSR_SETUP(ADC);
+
+	/*
+	* From section 7.4.1.6 of data sheet
+	* Needed for settling internal references.
+	*/
+	ADS8588H_Reset(ADC);
+}
+
 void ADS8588H_OSR_SETUP(ADS8588H_Interface_t *ADC)
 {
 	/*
 	 * First process bit field
 	 */
-	ADC->ADC_OSR.OS0 = ADC->ADC_OSR.OS0 & OSR_BIT_0;
-	ADC->ADC_OSR.OS1 = (ADC->ADC_OSR.OS1 & OSR_BIT_1) >> OSR_BIT_1_MASK;
-	ADC->ADC_OSR.OS2 = (ADC->ADC_OSR.OS2 & OSR_BIT_2) >> OSR_BIT_2_MASK;
+	ADC->ADC_OSR.OS0 = ADC->ADC_OSR.OSR & OSR_BIT_0;
+	ADC->ADC_OSR.OS1 = (ADC->ADC_OSR.OSR & OSR_BIT_1) >> OSR_BIT_1_MASK;
+	ADC->ADC_OSR.OS2 = (ADC->ADC_OSR.OSR & OSR_BIT_2) >> OSR_BIT_2_MASK;
 
 	/*
 	 * Set OSR values.
@@ -121,24 +145,10 @@ void ADS8588H_OSR_SETUP(ADS8588H_Interface_t *ADC)
 			ADC->ADC_OSR.OS0);
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_OS1_Port,
 			ADC->ADC_GPIO.ADC_OS1_pin,
-			ADC->ADC_OSR.OS1);
+			SET);
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_OS2_Port,
 			ADC->ADC_GPIO.ADC_OS2_pin,
 			ADC->ADC_OSR.OS2);
-}
-
-void ADS8588H_Init(ADS8588H_Interface_t *ADC)
-{
-	/*
-	 * Initialize time delay source
-	 */
-	HAL_TIM_Base_Start(ADC->ADC_Time.ADC_htim);
-
-	/*
-	* From section 7.4.1.6 of data sheet
-	* Needed for settling internal references.
-	*/
-	ADS8588H_Reset(ADC);
 }
 
 void ADS8588H_Reset(ADS8588H_Interface_t *ADC)
@@ -154,20 +164,64 @@ void ADS8588H_Reset(ADS8588H_Interface_t *ADC)
 			RESET);
 }
 
+void convert_data(ADS8588H_Interface_t *ADC)
+{
+	uint16_t temp1 = 0;
+	uint16_t temp2 = 0;
+
+	for(int x = 0; x < 4; x++)
+	{
+		for(int i = 0; i < 16; i++)
+		{
+			temp1 = temp1 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x01) << (15 - i));
+			temp2 = temp2 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x02) << (15 - i));
+		}
+		if( (temp1 & 0x8000) == 0x8000)
+		{
+			/*negative*/
+			ADC->DATA.data[x] = temp1 * 5.0/(1<<15) - 10.0;
+		}
+		else
+		{
+			/*positive*/
+			ADC->DATA.data[x] = temp1 * 5.0/(1<<15);
+		}
+		if( (temp2 & 0x8000) == 0x8000)
+		{
+			/*negative*/
+			ADC->DATA.data[x+4] = temp2 * 5.0/(1<<15) - 10.0;
+		}
+		else
+		{
+			/*positive*/
+			ADC->DATA.data[x+4] = temp2 * 5.0/(1<<15);
+		}
+
+	}
+
+
+
+
+}
+
 void ADC_SERVICE_ROUTINE(ADS8588H_Interface_t *ADC)
 {
 	ADS8588H_CONV_AB(ADC);
 	ADS8588H_POLL_BUSY(ADC);
 	ADS8588H_READ_ALL(ADC);
+	convert_data(ADC);
 
 }
 
 void ADS8588H_READ_ALL(ADS8588H_Interface_t *ADC)
 {
+
+	/*
+	 * Select ADC, enable low
+	 */
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_CS_Port,
 			ADC->ADC_GPIO.ADC_CS_pin,
 			RESET);
-
 	/*
 	 * Read adc stuff
 	 */
@@ -176,6 +230,9 @@ void ADS8588H_READ_ALL(ADS8588H_Interface_t *ADC)
 	if(ADC->OPSI.res != HAL_OK) Error_Handler();
 	ADC->OPSI.hopsi->State = HAL_OSPI_STATE_CMD_CFG;
 
+	/*
+	 * Release ADC
+	 */
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_CS_Port,
 			ADC->ADC_GPIO.ADC_CS_pin,
 			SET);
@@ -199,9 +256,8 @@ void ADS8588H_POLL_BUSY(ADS8588H_Interface_t *ADC)
 	/*
 	 * Wait until all 3 ADCs are ready
 	 */
-	while(!HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_1_Port, ADC->ADC_GPIO.ADC_BUSY_1_pin) &&
-			!HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_2_Port, ADC->ADC_GPIO.ADC_BUSY_2_pin) &&
-			!HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_3_Port, ADC->ADC_GPIO.ADC_BUSY_3_pin));
+	while(!HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_1_Port, ADC->ADC_GPIO.ADC_BUSY_1_pin) && !HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_2_Port, ADC->ADC_GPIO.ADC_BUSY_2_pin) && !HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_3_Port, ADC->ADC_GPIO.ADC_BUSY_3_pin));
+	ADC_Delay_us(ADC,500);
 }
 
 

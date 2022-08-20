@@ -91,6 +91,8 @@ void Error_Handler(void);
 #define ADC_RESET_GPIO_Port GPIOG
 #define Dummy_Data_Pin GPIO_PIN_1
 #define Dummy_Data_GPIO_Port GPIOG
+#define ADC_CS_Pin GPIO_PIN_11
+#define ADC_CS_GPIO_Port GPIOE
 #define RMII_TXD1_Pin GPIO_PIN_13
 #define RMII_TXD1_GPIO_Port GPIOB
 #define LED_RED_Pin GPIO_PIN_14
@@ -117,8 +119,6 @@ void Error_Handler(void);
 #define SWCLK_GPIO_Port GPIOA
 #define ADC_CONV_AB_Pin GPIO_PIN_0
 #define ADC_CONV_AB_GPIO_Port GPIOD
-#define ADC_CS_Pin GPIO_PIN_1
-#define ADC_CS_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOG
 #define RMII_TXD0_Pin GPIO_PIN_13
