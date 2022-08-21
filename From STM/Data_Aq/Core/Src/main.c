@@ -155,11 +155,11 @@ ADS8588H_Interface_t ADC;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  HalfKBWrite((char *)stext,chunk_mult);
-  for(int i = 0; i <65;i++)
-  {
-  	  pData[i]=i;
-  }
+//  HalfKBWrite((char *)stext,chunk_mult);
+//  for(int i = 0; i <65;i++)
+//  {
+//  	  pData[i]=i;
+//  }
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -192,7 +192,7 @@ int main(void)
   MX_OCTOSPI1_Init();
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
-  //EnableMemMappedQuadMode();
+  EnableMemMappedQuadMode();
   ADS8588H_Init_Struct(&ADC,
 		  &htim13,
 		  ADC_RESET_GPIO_Port,	ADC_RESET_Pin,
