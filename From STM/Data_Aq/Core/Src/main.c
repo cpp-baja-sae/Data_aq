@@ -77,9 +77,6 @@ ETH_TxPacketConfig TxConfig;
 
 ETH_HandleTypeDef heth;
 
-OSPI_HandleTypeDef hospi1;
-MDMA_HandleTypeDef hmdma_octospi1_fifo_th;
-
 SD_HandleTypeDef hsd1;
 
 TIM_HandleTypeDef htim13;
@@ -107,20 +104,18 @@ const osThreadAttr_t ServiceADC_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ETH_Init(void);
 static void MX_MDMA_Init(void);
 static void MX_SDMMC1_SD_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
-static void MX_OCTOSPI1_Init(void);
 static void MX_TIM13_Init(void);
 void StartSDCardTask(void *argument);
 void StartServiceADC(void *argument);
 
 /* USER CODE BEGIN PFP */
-void EnableMemMappedQuadMode(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -174,9 +169,6 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-/* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
-
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
@@ -189,10 +181,8 @@ int main(void)
   MX_FATFS_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_HS_USB_Init();
-  MX_OCTOSPI1_Init();
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
-  EnableMemMappedQuadMode();
   ADS8588H_Init_Struct(&ADC,
 		  &htim13,
 		  ADC_RESET_GPIO_Port,	ADC_RESET_Pin,
@@ -204,8 +194,7 @@ int main(void)
 		  ADC_OS0_GPIO_Port,	ADC_OS0_Pin,
 		  ADC_OS1_GPIO_Port,	ADC_OS1_Pin,
 		  ADC_OS2_GPIO_Port,	ADC_OS2_Pin,
-		  OSR_32,
-		  &hospi1
+		  OSR_64
 		  );
   ADS8588H_Init(&ADC);
 
@@ -325,33 +314,6 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief Peripherals Common Clock Configuration
-  * @retval None
-  */
-void PeriphCommonClock_Config(void)
-{
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-
-  /** Initializes the peripherals clock
-  */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_OSPI|RCC_PERIPHCLK_SDMMC;
-  PeriphClkInitStruct.PLL2.PLL2M = 1;
-  PeriphClkInitStruct.PLL2.PLL2N = 25;
-  PeriphClkInitStruct.PLL2.PLL2P = 2;
-  PeriphClkInitStruct.PLL2.PLL2Q = 2;
-  PeriphClkInitStruct.PLL2.PLL2R = 2;
-  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
-  PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
-  PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-  PeriphClkInitStruct.OspiClockSelection = RCC_OSPICLKSOURCE_PLL2;
-  PeriphClkInitStruct.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-/**
   * @brief ETH Initialization Function
   * @param None
   * @retval None
@@ -401,58 +363,6 @@ static void MX_ETH_Init(void)
 }
 
 /**
-  * @brief OCTOSPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_OCTOSPI1_Init(void)
-{
-
-  /* USER CODE BEGIN OCTOSPI1_Init 0 */
-
-  /* USER CODE END OCTOSPI1_Init 0 */
-
-  OSPIM_CfgTypeDef sOspiManagerCfg = {0};
-
-  /* USER CODE BEGIN OCTOSPI1_Init 1 */
-
-  /* USER CODE END OCTOSPI1_Init 1 */
-  /* OCTOSPI1 parameter configuration*/
-  hospi1.Instance = OCTOSPI1;
-  hospi1.Init.FifoThreshold = 1;
-  hospi1.Init.DualQuad = HAL_OSPI_DUALQUAD_DISABLE;
-  hospi1.Init.MemoryType = HAL_OSPI_MEMTYPE_MICRON;
-  hospi1.Init.DeviceSize = 8;
-  hospi1.Init.ChipSelectHighTime = 1;
-  hospi1.Init.FreeRunningClock = HAL_OSPI_FREERUNCLK_DISABLE;
-  hospi1.Init.ClockMode = HAL_OSPI_CLOCK_MODE_0;
-  hospi1.Init.WrapSize = HAL_OSPI_WRAP_NOT_SUPPORTED;
-  hospi1.Init.ClockPrescaler = 30;
-  hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_NONE;
-  hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_DISABLE;
-  hospi1.Init.ChipSelectBoundary = 0;
-  hospi1.Init.ClkChipSelectHighTime = 0;
-  hospi1.Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_BYPASSED;
-  hospi1.Init.MaxTran = 0;
-  hospi1.Init.Refresh = 0;
-  if (HAL_OSPI_Init(&hospi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sOspiManagerCfg.ClkPort = 1;
-  sOspiManagerCfg.IOLowPort = HAL_OSPIM_IOPORT_1_LOW;
-  sOspiManagerCfg.IOHighPort = HAL_OSPIM_IOPORT_1_HIGH;
-  if (HAL_OSPIM_Config(&hospi1, &sOspiManagerCfg, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN OCTOSPI1_Init 2 */
-
-  /* USER CODE END OCTOSPI1_Init 2 */
-
-}
-
-/**
   * @brief SDMMC1 Initialization Function
   * @param None
   * @retval None
@@ -498,7 +408,7 @@ static void MX_TIM13_Init(void)
 
   /* USER CODE END TIM13_Init 1 */
   htim13.Instance = TIM13;
-  htim13.Init.Prescaler = 275-1;
+  htim13.Init.Prescaler = 0;
   htim13.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim13.Init.Period = 65535;
   htim13.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -651,13 +561,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
@@ -835,46 +745,6 @@ static void FS_SPAM(void)
 		}
 	}
 }
-
-
-void EnableMemMappedQuadMode(void)
-{
-	OSPI_RegularCmdTypeDef sCommand;
-	HAL_StatusTypeDef res;
-//	OSPI_MemoryMappedTypeDef sMemMappedCfg;
-
-	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE;
-
-	sCommand.FlashId = HAL_OSPI_FLASH_ID_1;
-	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_NONE;
-	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-	// sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
-	// sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-	// sCommand.Instruction = 0;
-
-	sCommand.AddressMode = HAL_OSPI_ADDRESS_NONE;
-	// sCommand.AddressSize = HAL_OSPI_ADDRESS_8_BITS;
-	// sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
-	// sCommand.Address = 0xF;
-	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
-
-	sCommand.DataMode = HAL_OSPI_DATA_8_LINES;
-	// Using Single Data Rate (SDR)
-	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
-	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_ONLY_FIRST_CMD;
-
-	sCommand.NbData = 64;
-	sCommand.DummyCycles = 0;
-
-	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
-	if (res != HAL_OK)
-	{
-		Error_Handler();
-	}
-}
-
-
 
 /* USER CODE END 4 */
 

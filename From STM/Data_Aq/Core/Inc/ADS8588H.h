@@ -29,8 +29,9 @@
 #define	OSR_BIT_1_MASK	1
 #define	OSR_BIT_2_MASK	2
 
-#define DEFAULT_CONVAB_DELAY	10
-#define DEFAULT_RESET_DELAY	10
+#define us_to_ns_multiplier	275
+#define DEFAULT_CONVAB_DELAY	(10 * us_to_ns_multiplier)
+#define DEFAULT_RESET_DELAY	(10 * us_to_ns_multiplier)
 #define DEFAULT_CS_DELAY	1
 
 #define WIPE_COUNTER	0
@@ -81,12 +82,6 @@ typedef struct
 
 typedef struct
 {
-	OSPI_HandleTypeDef	*hopsi;
-	FRESULT	res;
-} ADS8588H_OSPI_HANDLER_t;
-
-typedef struct
-{
 	uint8_t	raw_data[64];
 	uint16_t	raw_data_16[8];
 	float data[8];
@@ -98,7 +93,6 @@ typedef struct
 	ADS8588H_HAL_GPIO_t ADC_GPIO;
 	ADS8588H_OSR_t	ADC_OSR;
 	ADS8588H_ADC_DATA_t	DATA;
-	ADS8588H_OSPI_HANDLER_t	OPSI;
 } ADS8588H_Interface_t;
 
 void ADS8588H_Init(ADS8588H_Interface_t *ADC);
@@ -115,10 +109,9 @@ void ADS8588H_Init_Struct(ADS8588H_Interface_t	*ADC, \
 		GPIO_TypeDef	*ADC_OS0_Port, uint16_t 	ADC_OS0_pin,
 		GPIO_TypeDef	*ADC_OS1_Port, uint16_t 	ADC_OS1_pin,
 		GPIO_TypeDef	*ADC_OS2_Port, uint16_t 	ADC_OS2_pin,
-		uint8_t OSR,
-		OSPI_HandleTypeDef	*hopsi
+		uint8_t OSR
 		);
-void ADC_Delay_us(ADS8588H_Interface_t *ADC, uint16_t us);
+void ADC_Delay_ns(ADS8588H_Interface_t *ADC, uint32_t ns_tick);
 void ADS8588H_Time_Delay_Base(ADS8588H_Interface_t *ADC);
 void ADS8588H_READ_ALL(ADS8588H_Interface_t *ADC);
 void ADS8588H_OSR_SETUP(ADS8588H_Interface_t *ADC);

@@ -7,7 +7,15 @@
 #include "ADS8588H.h"
 #include "main.h"
 
+/*
+ * Need to figure a way to auto find the pin location during the preprocessor,
+ * value has to be updated manual for code changes
+ */
+#define READ_PIN_msk	12
+#define FASTREAD(Port,PIN)	((Port->IDR & PIN)>>READ_PIN_msk)
+
 #define CONVERSION_CODE	0xFFFF
+#define PIN_NUM	(16U)
 
 void convert_data(ADS8588H_Interface_t *ADC);
 
@@ -22,8 +30,7 @@ void ADS8588H_Init_Struct(ADS8588H_Interface_t	*ADC, \
 		GPIO_TypeDef	*ADC_OS0_Port, uint16_t 	ADC_OS0_pin,
 		GPIO_TypeDef	*ADC_OS1_Port, uint16_t 	ADC_OS1_pin,
 		GPIO_TypeDef	*ADC_OS2_Port, uint16_t 	ADC_OS2_pin,
-		uint8_t OSR,
-		OSPI_HandleTypeDef	*hopsi
+		uint8_t OSR
 		)
 {
 	/*
@@ -35,11 +42,6 @@ void ADS8588H_Init_Struct(ADS8588H_Interface_t	*ADC, \
 	 * Load time delay base defaults
 	 */
 	ADS8588H_Time_Delay_Base(ADC);
-
-	/*
-	 * Link OPSI source to ADC driver
-	 */
-	ADC->OPSI.hopsi = hopsi;
 
 	/*
 	 * Load OSR mask
@@ -158,47 +160,12 @@ void ADS8588H_Reset(ADS8588H_Interface_t *ADC)
 			ADC->ADC_GPIO.ADC_Reset_pin,
 			SET);
 
-	ADC_Delay_us(ADC,ADC->ADC_Time.Delay.reset_Delay);
+	ADC_Delay_ns(ADC,ADC->ADC_Time.Delay.reset_Delay);
 
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_Reset_Port,
 			ADC->ADC_GPIO.ADC_Reset_pin,
 			RESET);
 }
-
-//void convert_data(ADS8588H_Interface_t *ADC)
-//{
-//	uint16_t temp1 = 0;
-//	uint16_t temp2 = 0;
-//
-//	for(int x = 0; x < 4; x++)
-//	{
-//		for(int i = 0; i < 16; i++)
-//		{
-//			temp1 = temp1 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x01) << (15 - i));
-//			temp2 = temp2 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x02) << (15 - i));
-//		}
-//		if( (temp1 & 0x8000) == 0x8000)
-//		{
-//			/*negative*/
-//			ADC->DATA.data[x] = temp1 * 10.0/0xFFFF - 10.0;
-//		}
-//		else
-//		{
-//			/*positive*/
-//			ADC->DATA.data[x] = temp1 * 10.0/0xFFFF;
-//		}
-//		if( (temp2 & 0x8000) == 0x8000)
-//		{
-//			/*negative*/
-//			ADC->DATA.data[x+4] = temp2 * 10.0/0xFFFF - 10.0;
-//		}
-//		else
-//		{
-//			/*positive*/
-//			ADC->DATA.data[x+4] = temp2 * 10.0/0xFFFF;
-//		}
-//	}
-//}
 
 void convert_data(ADS8588H_Interface_t *ADC)
 {
@@ -229,33 +196,34 @@ void ADC_SERVICE_ROUTINE(ADS8588H_Interface_t *ADC)
 
 void ADS8588H_READ_ALL(ADS8588H_Interface_t *ADC)
 {
-
+	int i;
 	/*
 	 * Select ADC, enable low
 	 */
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_CS_Port,
 			ADC->ADC_GPIO.ADC_CS_pin,
 			RESET);
-	ADC_Delay_us(ADC,5);
+
 	/*
-	 * Read adc stuff
+	 * Read ADC
 	 */
 	for(int x = 0; x<8; x++)
 	{
+		i = 15;
 		ADC->DATA.raw_data_16[x] = 0;
-		for(int i = 15; i >= 0; i--)
+
+		while(i >= 0)
 		{
-			HAL_GPIO_WritePin(ADC_CLK_GPIO_Port, ADC_CLK_Pin,RESET);
+			/* RESET pin state, low level implementation */
+			ADC_CLK_GPIO_Port->BSRR = (uint32_t)ADC_CLK_Pin << PIN_NUM;
+			/* Read pin state and collect it, forming the message. */
+			ADC->DATA.raw_data_16[x] |= FASTREAD(ADC_CH_A_GPIO_Port, ADC_CH_A_Pin) << i;
+			/* SET pin state, low level implementation */
+			ADC_CLK_GPIO_Port->BSRR = ADC_CLK_Pin;
 
-			ADC->DATA.raw_data_16[x] |= HAL_GPIO_ReadPin(ADC_CH_A_GPIO_Port, ADC_CH_A_Pin) << i;
-
-			HAL_GPIO_WritePin(ADC_CLK_GPIO_Port, ADC_CLK_Pin,SET);
+			i--;
 		}
 	}
-
-//	ADC->OPSI.res = HAL_OSPI_Receive(ADC->OPSI.hopsi,ADC->DATA.raw_data ,HAL_MAX_DELAY-1);
-//	if(ADC->OPSI.res != HAL_OK) Error_Handler();
-//	ADC->OPSI.hopsi->State = HAL_OSPI_STATE_CMD_CFG;
 
 	/*
 	 * Release ADC
@@ -271,8 +239,6 @@ void ADS8588H_CONV_AB(ADS8588H_Interface_t *ADC)
 			ADC->ADC_GPIO.ADC_Conv_AB_pin,
 			RESET);
 
-	ADC_Delay_us(ADC,ADC->ADC_Time.Delay.convAB_Delay);
-
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_Conv_AB_Port,
 			ADC->ADC_GPIO.ADC_Conv_AB_pin,
 			SET);
@@ -284,12 +250,14 @@ void ADS8588H_POLL_BUSY(ADS8588H_Interface_t *ADC)
 	 * Wait until all 3 ADCs are ready
 	 */
 	while(HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_1_Port, ADC->ADC_GPIO.ADC_BUSY_1_pin));// && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_2_Port, ADC->ADC_GPIO.ADC_BUSY_2_pin) && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_3_Port, ADC->ADC_GPIO.ADC_BUSY_3_pin));
-	//ADC_Delay_us(ADC,500);
 }
 
 
-
-void ADC_Delay_us(ADS8588H_Interface_t *ADC, uint16_t us)
+/* @brief Timer is based off of 275MHz clock for 3.64 nS ticks
+ * 	Time to enter and setup function takes a lot of time so lower values
+ * 	will not be accurate.
+ */
+void ADC_Delay_ns(ADS8588H_Interface_t *ADC, uint32_t ns_tick)
 {
 	/*
 	 * Reset timer counter
@@ -298,7 +266,7 @@ void ADC_Delay_us(ADS8588H_Interface_t *ADC, uint16_t us)
 	/*
 	 * Wait till time expires
 	 */
-	while ((uint16_t)__HAL_TIM_GET_COUNTER(ADC->ADC_Time.ADC_htim) < us);
+	while (__HAL_TIM_GET_COUNTER(ADC->ADC_Time.ADC_htim) < ns_tick);
 }
 
 
