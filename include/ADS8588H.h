@@ -8,6 +8,7 @@
 #define ADC_SCLK_PIN 1
 #define ADC_RESET 2
 #define ADC_CONV_AB 3
+#define ADC_BUSY 4
 #define SG_ADC_1_DOUTB 18
 #define SG_ADC_1_DOUTA 19
 #define SG_ADC_2_DOUTB 15

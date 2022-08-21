@@ -29,8 +29,8 @@
 #define	OSR_BIT_1_MASK	1
 #define	OSR_BIT_2_MASK	2
 
-#define DEFAULT_CONVAB_DELAY	1
-#define DEFAULT_RESET_DELAY	1
+#define DEFAULT_CONVAB_DELAY	10
+#define DEFAULT_RESET_DELAY	10
 #define DEFAULT_CS_DELAY	1
 
 #define WIPE_COUNTER	0
@@ -88,6 +88,7 @@ typedef struct
 typedef struct
 {
 	uint8_t	raw_data[64];
+	uint16_t	raw_data_16[8];
 	float data[8];
 } ADS8588H_ADC_DATA_t;
 

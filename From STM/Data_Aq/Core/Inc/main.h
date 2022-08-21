@@ -103,6 +103,8 @@ void Error_Handler(void);
 #define STLK_VCP_TX_GPIO_Port GPIOD
 #define USB_FS_PWR_EN_Pin GPIO_PIN_10
 #define USB_FS_PWR_EN_GPIO_Port GPIOD
+#define ADC_CLK_Pin GPIO_PIN_15
+#define ADC_CLK_GPIO_Port GPIOD
 #define USB_FS_OVCR_Pin GPIO_PIN_7
 #define USB_FS_OVCR_GPIO_Port GPIOG
 #define USB_FS_VBUS_Pin GPIO_PIN_9
@@ -121,6 +123,8 @@ void Error_Handler(void);
 #define ADC_CONV_AB_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOG
+#define ADC_CH_A_Pin GPIO_PIN_12
+#define ADC_CH_A_GPIO_Port GPIOG
 #define RMII_TXD0_Pin GPIO_PIN_13
 #define RMII_TXD0_GPIO_Port GPIOG
 #define SWO_Pin GPIO_PIN_3

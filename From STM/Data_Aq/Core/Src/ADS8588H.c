@@ -7,6 +7,7 @@
 #include "ADS8588H.h"
 #include "main.h"
 
+#define CONVERSION_CODE	0xFFFF
 
 void convert_data(ADS8588H_Interface_t *ADC);
 
@@ -145,7 +146,7 @@ void ADS8588H_OSR_SETUP(ADS8588H_Interface_t *ADC)
 			ADC->ADC_OSR.OS0);
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_OS1_Port,
 			ADC->ADC_GPIO.ADC_OS1_pin,
-			SET);
+			ADC->ADC_OSR.OS1);
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_OS2_Port,
 			ADC->ADC_GPIO.ADC_OS2_pin,
 			ADC->ADC_OSR.OS2);
@@ -166,36 +167,36 @@ void ADS8588H_Reset(ADS8588H_Interface_t *ADC)
 
 void convert_data(ADS8588H_Interface_t *ADC)
 {
-	uint16_t temp1 = 0;
-	uint16_t temp2 = 0;
+//	uint16_t temp1 = 0;
+//	uint16_t temp2 = 0;
 
-	for(int x = 0; x < 4; x++)
+	for(int x = 0; x < 8; x++)
 	{
-		for(int i = 0; i < 16; i++)
-		{
-			temp1 = temp1 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x01) << (15 - i));
-			temp2 = temp2 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x02) << (15 - i));
-		}
-		if( (temp1 & 0x8000) == 0x8000)
+//		for(int i = 0; i < 16; i++)
+//		{
+//			temp1 = temp1 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x01) << (15 - i));
+//			temp2 = temp2 | (uint16_t)((ADC->DATA.raw_data[i + 16*x] & 0x02) << (15 - i));
+//		}
+		if( (ADC->DATA.raw_data_16[x] & 0x8000) == 0x8000)
 		{
 			/*negative*/
-			ADC->DATA.data[x] = temp1 * 5.0/(1<<15) - 10.0;
+			ADC->DATA.data[x] = ADC->DATA.raw_data_16[x] * 10.0/0xFFFF - 10.0;
 		}
 		else
 		{
 			/*positive*/
-			ADC->DATA.data[x] = temp1 * 5.0/(1<<15);
+			ADC->DATA.data[x] = ADC->DATA.raw_data_16[x] * 10.0/0xFFFF;
 		}
-		if( (temp2 & 0x8000) == 0x8000)
-		{
-			/*negative*/
-			ADC->DATA.data[x+4] = temp2 * 5.0/(1<<15) - 10.0;
-		}
-		else
-		{
-			/*positive*/
-			ADC->DATA.data[x+4] = temp2 * 5.0/(1<<15);
-		}
+//		if( (temp2 & 0x8000) == 0x8000)
+//		{
+//			/*negative*/
+//			ADC->DATA.data[x+4] = temp2 * 10.0/0xFFFF - 10.0;
+//		}
+//		else
+//		{
+//			/*positive*/
+//			ADC->DATA.data[x+4] = temp2 * 10.0/0xFFFF;
+//		}
 
 	}
 
@@ -222,13 +223,28 @@ void ADS8588H_READ_ALL(ADS8588H_Interface_t *ADC)
 	HAL_GPIO_WritePin(ADC->ADC_GPIO.ADC_CS_Port,
 			ADC->ADC_GPIO.ADC_CS_pin,
 			RESET);
+	ADC_Delay_us(ADC,5);
 	/*
 	 * Read adc stuff
 	 */
+	for(int x = 0; x<8; x++)
+	{
+		ADC->DATA.raw_data_16[x] = 0;
+		for(int i = 15; i >= 0; i--)
+		{
+			HAL_GPIO_WritePin(ADC_CLK_GPIO_Port, ADC_CLK_Pin,RESET);
+			ADC_Delay_us(ADC,1);
 
-	ADC->OPSI.res = HAL_OSPI_Receive(ADC->OPSI.hopsi,ADC->DATA.raw_data ,HAL_MAX_DELAY-1);
-	if(ADC->OPSI.res != HAL_OK) Error_Handler();
-	ADC->OPSI.hopsi->State = HAL_OSPI_STATE_CMD_CFG;
+			ADC->DATA.raw_data_16[x] |= HAL_GPIO_ReadPin(ADC_CH_A_GPIO_Port, ADC_CH_A_Pin) << i;
+
+			HAL_GPIO_WritePin(ADC_CLK_GPIO_Port, ADC_CLK_Pin,SET);
+			ADC_Delay_us(ADC,1);
+		}
+
+	}
+//	ADC->OPSI.res = HAL_OSPI_Receive(ADC->OPSI.hopsi,ADC->DATA.raw_data ,HAL_MAX_DELAY-1);
+//	if(ADC->OPSI.res != HAL_OK) Error_Handler();
+//	ADC->OPSI.hopsi->State = HAL_OSPI_STATE_CMD_CFG;
 
 	/*
 	 * Release ADC
@@ -256,8 +272,8 @@ void ADS8588H_POLL_BUSY(ADS8588H_Interface_t *ADC)
 	/*
 	 * Wait until all 3 ADCs are ready
 	 */
-	while(!HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_1_Port, ADC->ADC_GPIO.ADC_BUSY_1_pin) && !HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_2_Port, ADC->ADC_GPIO.ADC_BUSY_2_pin) && !HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_3_Port, ADC->ADC_GPIO.ADC_BUSY_3_pin));
-	ADC_Delay_us(ADC,500);
+	while(HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_1_Port, ADC->ADC_GPIO.ADC_BUSY_1_pin));// && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_2_Port, ADC->ADC_GPIO.ADC_BUSY_2_pin) && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_3_Port, ADC->ADC_GPIO.ADC_BUSY_3_pin));
+	//ADC_Delay_us(ADC,500);
 }
 
 

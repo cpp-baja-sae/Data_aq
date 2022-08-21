@@ -15,7 +15,9 @@ void ADC_SERVICE_ROUTINE() {
    * Board needs a interrupt tied to falling edge of BUSY(?)
    * Wait out BUSY and OSR
    */
-  delay_5ns(WAIT_OUT_CONVERSION_TIME_200us);
+  while (digitalRead(ADC_BUSY))
+    ;
+  // delay_5ns(WAIT_OUT_CONVERSION_TIME_200us);
 
   ADS8588H_READ_8CH();
   return;
@@ -44,8 +46,8 @@ void ADS8588H_READ_8CH() {
     convertData_Muxed(channel, &ADC_General_Purpose_2);
   }
 
-  // print_data(&ADC_Strain_Guage_2);
-  print_mux_data(&ADC_General_Purpose_2);
+  print_data(&ADC_Strain_Guage_1);
+  // print_mux_data(&ADC_General_Purpose_2);
   digitalWrite(ADC_CS_PIN, HIGH);
   if (ADC_General_Purpose_2.mux_delay >= MUX_1_SECOND) {
     ADC_MUX(&ADC_General_Purpose_2);
