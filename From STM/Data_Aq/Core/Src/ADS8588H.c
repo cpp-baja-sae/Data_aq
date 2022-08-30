@@ -10,9 +10,14 @@
 /*
  * Need to figure a way to auto find the pin location during the preprocessor,
  * value has to be updated manual for code changes
+ * READ_PIN_msk value is pin number.
  */
-#define READ_PIN_msk	12
-#define FASTREAD(Port,PIN)	((Port->IDR & PIN)>>READ_PIN_msk)
+#define READ_CH1_PIN_msk	8
+#define FASTREADCH1(Port,PIN)	((Port->IDR & PIN)>>READ_CH1_PIN_msk)
+#define READ_CH2_PIN_msk	2
+#define FASTREADCH2(Port,PIN)	((Port->IDR & PIN)>>READ_CH2_PIN_msk)
+#define READ_CH3_PIN_msk	7
+#define FASTREADCH3(Port,PIN)	((Port->IDR & PIN)>>READ_CH3_PIN_msk)
 
 #define CONVERSION_CODE	0xFFFF
 #define PIN_NUM	(16U)
@@ -172,15 +177,35 @@ void convert_data(ADS8588H_Interface_t *ADC)
 
 	for(int x = 0; x < 8; x++)
 	{
-		if( (ADC->DATA.raw_data_16[x] & 0x8000) == 0x8000)
+		if( (ADC->DATA.raw_data_16[0][x] & 0x8000) == 0x8000)
 		{
 			/*negative*/
-			ADC->DATA.data[x] = ADC->DATA.raw_data_16[x] * 10.0/0xFFFF - 10.0;
+			ADC->DATA.data[0][x] = ADC->DATA.raw_data_16[0][x] * 10.0/0xFFFF - 10.0;
 		}
 		else
 		{
 			/*positive*/
-			ADC->DATA.data[x] = ADC->DATA.raw_data_16[x] * 10.0/0xFFFF;
+			ADC->DATA.data[0][x] = ADC->DATA.raw_data_16[0][x] * 10.0/0xFFFF;
+		}
+		if( (ADC->DATA.raw_data_16[1][x] & 0x8000) == 0x8000)
+		{
+			/*negative*/
+			ADC->DATA.data[1][x] = ADC->DATA.raw_data_16[1][x] * 10.0/0xFFFF - 10.0;
+		}
+		else
+		{
+			/*positive*/
+			ADC->DATA.data[1][x] = ADC->DATA.raw_data_16[1][x] * 10.0/0xFFFF;
+		}
+		if( (ADC->DATA.raw_data_16[2][x] & 0x8000) == 0x8000)
+		{
+			/*negative*/
+			ADC->DATA.data[2][x] = ADC->DATA.raw_data_16[2][x] * 10.0/0xFFFF - 10.0;
+		}
+		else
+		{
+			/*positive*/
+			ADC->DATA.data[2][x] = ADC->DATA.raw_data_16[2][x] * 10.0/0xFFFF;
 		}
 	}
 }
@@ -197,6 +222,7 @@ void ADC_SERVICE_ROUTINE(ADS8588H_Interface_t *ADC)
 void ADS8588H_READ_ALL(ADS8588H_Interface_t *ADC)
 {
 	int i;
+	int x = 0;
 	/*
 	 * Select ADC, enable low
 	 */
@@ -207,22 +233,24 @@ void ADS8588H_READ_ALL(ADS8588H_Interface_t *ADC)
 	/*
 	 * Read ADC
 	 */
-	for(int x = 0; x<8; x++)
+	while(x<8)
 	{
 		i = 15;
-		ADC->DATA.raw_data_16[x] = 0;
-
 		while(i >= 0)
 		{
 			/* RESET pin state, low level implementation */
 			ADC_CLK_GPIO_Port->BSRR = (uint32_t)ADC_CLK_Pin << PIN_NUM;
 			/* Read pin state and collect it, forming the message. */
-			ADC->DATA.raw_data_16[x] |= FASTREAD(ADC_CH_A_GPIO_Port, ADC_CH_A_Pin) << i;
+			ADC->DATA.raw_data_16[0][x] |= FASTREADCH1(ADC_CH1_A_GPIO_Port, ADC_CH1_A_Pin) << i;
+			ADC->DATA.raw_data_16[1][x] |= FASTREADCH2(ADC_CH2_A_GPIO_Port, ADC_CH2_A_Pin) << i;
+			ADC->DATA.raw_data_16[2][x] |= FASTREADCH3(ADC_CH3_A_GPIO_Port, ADC_CH3_A_Pin) << i;
 			/* SET pin state, low level implementation */
 			ADC_CLK_GPIO_Port->BSRR = ADC_CLK_Pin;
-
+			/* Add a small delay to acheive near 50% duty cycle clk. Value was found by experimenting.  */
+			ADC_Delay_ns(ADC,3);
 			i--;
 		}
+		x++;
 	}
 
 	/*
@@ -249,7 +277,8 @@ void ADS8588H_POLL_BUSY(ADS8588H_Interface_t *ADC)
 	/*
 	 * Wait until all 3 ADCs are ready
 	 */
-	while(HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_1_Port, ADC->ADC_GPIO.ADC_BUSY_1_pin));// && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_2_Port, ADC->ADC_GPIO.ADC_BUSY_2_pin) && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_3_Port, ADC->ADC_GPIO.ADC_BUSY_3_pin));
+	while(HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_1_Port, ADC->ADC_GPIO.ADC_BUSY_1_pin) && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_2_Port, ADC->ADC_GPIO.ADC_BUSY_2_pin) && HAL_GPIO_ReadPin(ADC->ADC_GPIO.ADC_BUSY_3_Port, ADC->ADC_GPIO.ADC_BUSY_3_pin));
+//	ADC_Delay_ns(ADC,13750);
 }
 
 

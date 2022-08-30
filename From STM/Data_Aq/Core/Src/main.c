@@ -561,17 +561,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOF, ADC_OS0_Pin|ADC_OS1_Pin|ADC_OS2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(ADC_CLK_GPIO_Port, ADC_CLK_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LED_GREEN_Pin|LED_RED_Pin, GPIO_PIN_RESET);
@@ -586,10 +589,16 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, ADC_CLK_Pin|ADC_CONV_AB_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(ADC_CONV_AB_GPIO_Port, ADC_CONV_AB_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : ADC_CH2_A_Pin ADC_CH3_A_Pin */
+  GPIO_InitStruct.Pin = ADC_CH2_A_Pin|ADC_CH3_A_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -603,8 +612,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(ADC_BUSY_1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ADC_BUSY_2_Pin ADC_BUSY_3_Pin */
-  GPIO_InitStruct.Pin = ADC_BUSY_2_Pin|ADC_BUSY_3_Pin;
+  /*Configure GPIO pins : ADC_BUSY_2_Pin ADC_BUSY_3_Pin ADC_CH1_A_Pin */
+  GPIO_InitStruct.Pin = ADC_BUSY_2_Pin|ADC_BUSY_3_Pin|ADC_CH1_A_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
@@ -615,6 +624,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ADC_CLK_Pin */
+  GPIO_InitStruct.Pin = ADC_CLK_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(ADC_CLK_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED_GREEN_Pin LED_RED_Pin */
   GPIO_InitStruct.Pin = LED_GREEN_Pin|LED_RED_Pin;
@@ -651,13 +667,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(USB_FS_PWR_EN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ADC_CLK_Pin ADC_CONV_AB_Pin */
-  GPIO_InitStruct.Pin = ADC_CLK_Pin|ADC_CONV_AB_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
   /*Configure GPIO pin : USB_FS_OVCR_Pin */
   GPIO_InitStruct.Pin = USB_FS_OVCR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
@@ -678,11 +687,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG1_HS;
   HAL_GPIO_Init(USB_FS_ID_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : ADC_CH_A_Pin */
-  GPIO_InitStruct.Pin = ADC_CH_A_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  /*Configure GPIO pin : ADC_CONV_AB_Pin */
+  GPIO_InitStruct.Pin = ADC_CONV_AB_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(ADC_CH_A_GPIO_Port, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADC_CONV_AB_GPIO_Port, &GPIO_InitStruct);
 
 }
 
@@ -804,6 +814,7 @@ void StartServiceADC(void *argument)
 	 HAL_GPIO_TogglePin(Dummy_Data_GPIO_Port, Dummy_Data_Pin);
 	ADC_SERVICE_ROUTINE(&ADC);
 	HAL_GPIO_TogglePin(Dummy_Data_GPIO_Port, Dummy_Data_Pin);
+	memset(ADC.DATA.raw_data_16,0,sizeof(ADC.DATA.raw_data_16));
 	vTaskDelayUntil( &xLastWakeTime, xFrequency );
   }
   /* USER CODE END StartServiceADC */

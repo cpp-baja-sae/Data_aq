@@ -57,6 +57,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define ADC_CH2_A_Pin GPIO_PIN_2
+#define ADC_CH2_A_GPIO_Port GPIOE
 #define B1_Pin GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
 #define ADC_BUSY_1_Pin GPIO_PIN_0
@@ -71,6 +73,10 @@ void Error_Handler(void);
 #define ADC_OS1_GPIO_Port GPIOF
 #define ADC_OS2_Pin GPIO_PIN_5
 #define ADC_OS2_GPIO_Port GPIOF
+#define ADC_CH1_A_Pin GPIO_PIN_8
+#define ADC_CH1_A_GPIO_Port GPIOF
+#define ADC_CLK_Pin GPIO_PIN_10
+#define ADC_CLK_GPIO_Port GPIOF
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
 #define RMII_MDC_Pin GPIO_PIN_1
@@ -91,6 +97,8 @@ void Error_Handler(void);
 #define ADC_RESET_GPIO_Port GPIOG
 #define Dummy_Data_Pin GPIO_PIN_1
 #define Dummy_Data_GPIO_Port GPIOG
+#define ADC_CH3_A_Pin GPIO_PIN_7
+#define ADC_CH3_A_GPIO_Port GPIOE
 #define ADC_CS_Pin GPIO_PIN_11
 #define ADC_CS_GPIO_Port GPIOE
 #define RMII_TXD1_Pin GPIO_PIN_13
@@ -103,8 +111,6 @@ void Error_Handler(void);
 #define STLK_VCP_TX_GPIO_Port GPIOD
 #define USB_FS_PWR_EN_Pin GPIO_PIN_10
 #define USB_FS_PWR_EN_GPIO_Port GPIOD
-#define ADC_CLK_Pin GPIO_PIN_15
-#define ADC_CLK_GPIO_Port GPIOD
 #define USB_FS_OVCR_Pin GPIO_PIN_7
 #define USB_FS_OVCR_GPIO_Port GPIOG
 #define USB_FS_VBUS_Pin GPIO_PIN_9
@@ -123,8 +129,6 @@ void Error_Handler(void);
 #define ADC_CONV_AB_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOG
-#define ADC_CH_A_Pin GPIO_PIN_12
-#define ADC_CH_A_GPIO_Port GPIOG
 #define RMII_TXD0_Pin GPIO_PIN_13
 #define RMII_TXD0_GPIO_Port GPIOG
 #define SWO_Pin GPIO_PIN_3

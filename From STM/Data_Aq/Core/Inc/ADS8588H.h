@@ -83,8 +83,8 @@ typedef struct
 typedef struct
 {
 	uint8_t	raw_data[64];
-	uint16_t	raw_data_16[8];
-	float data[8];
+	uint16_t	raw_data_16[3][8];
+	float data[3][8];
 } ADS8588H_ADC_DATA_t;
 
 typedef struct
