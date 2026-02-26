@@ -24,8 +24,8 @@ const int CS_PIN = 10;
 
 
 // BRAKES
-const int breakRearPin  = 22; //Changed from 40 to match PCB 
-const int breakFrontPin = 21; //Changed from 41 to match PCB
+const int brakeRearPin  = 21; //Changed from 40 to match PCB 
+const int brakeFrontPin = 22; //Changed from 41 to match PCB
 // Our Brake Sensors read 0-2000 PSI from .5V -> 4.5V.
 const int PSImax = 2000;
 const int PSImin = 0;
@@ -44,12 +44,66 @@ double readtoPSI(int readVoltage){
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 
 // ENGINE RPM
-const int rpmPin = 23; // Updated from previous, was 33. Incorrect based on PCBs. 
-unsigned long timeOfSpark = 0;
-unsigned long prevTimeOfSpark = 0; // Could change these, idk if we need to be storing this much data - calculations estimate for roughly 30 ms timeBetweenSparks
-unsigned long timeBetweenSparks = 0;
-double engineRPM = 0;
-bool prevState = LOW;
+const int rpmPin = 23;  // Digital input pin that receives the RPM pulse signal
+
+const float PULSES_PER_REVOLUTION = 0.5f;  
+
+  // Timestamp (in microseconds) of the most recent detected rising edge (pulse).
+volatile uint32_t lastPulseTime_us = 0;
+
+  // Time difference (in microseconds) between the last two valid pulses.
+  // This is the pulse period we use to compute RPM.
+volatile uint32_t lastPulsePeriod_us = 0;
+
+  // -----------------------------
+  // Noise filtering / sanity limits
+  // -----------------------------
+
+  // If pulses per revolution = 0.5, then
+  //   RPM = (60e6 / period_us) / 0.5 = 120e6 / period_us
+  // If period_us = 40,000 us => RPM ~ 4000, which is above our expected range.
+  // So anything faster than 40,000 us is noise/ringing.
+const uint32_t MIN_VALID_PERIOD_us = 15000;
+
+  // Reject pulses that are extremely slow (could be a stopped engine / bad wiring).
+  // 300000 us = 0.3 s between pulses
+const uint32_t MAX_VALID_PERIOD_us = 300000;
+
+  // If we haven’t seen a pulse for this long, force RPM to 0.
+const uint32_t NO_PULSE_TIMEOUT_us = 300000;
+
+  // -----------------------------
+  // Output (computed) RPM
+  // -----------------------------
+float engineRPM = 0.0f;
+
+  /*
+  Interrupt Service Routine (ISR)
+  Runs immediately when a rising edge is detected on rpmPin.
+
+  What it does:
+  1) Reads current time in microseconds.
+  2) Computes period since previous pulse.
+  3) If that period looks valid (not noise), stores it for the main loop to use.
+*/
+void onRpmPulseRise() {
+  uint32_t now_us = micros();
+
+  // If this isn't the very first pulse, we can compute the time between pulses.
+  if (lastPulseTime_us != 0) {
+    uint32_t period_us = now_us - lastPulseTime_us;
+
+    // Basic noise filtering:
+    // - Too short  => likely electrical noise / ringing
+    // - Too long   => likely not a real running engine pulse (or first pulse after stop)
+    if (period_us >= MIN_VALID_PERIOD_us && period_us <= MAX_VALID_PERIOD_us) {
+      lastPulsePeriod_us = period_us;
+    }
+  }
+
+  // Always update the time of the most recent pulse
+  lastPulseTime_us = now_us;
+}
 
 // WHEEL RPM (currently unused, kept for future)
 // const int rpmPin = 4;
@@ -71,12 +125,16 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
 
 
-  // THROTTLE SPI (currently not used)
+// THROTTLE SPI (currently not used)
   SPI.begin();
   pinMode(CS_PIN, OUTPUT);
-  pinMode(rpmPin, INPUT);
   digitalWrite(CS_PIN, HIGH);
-
+// Engine RPM
+  // Use INPUT if your sensor output is a clean push-pull digital signal.
+  // Use INPUT_PULLUP only if your sensor output is open-collector/open-drain.
+  pinMode(rpmPin, INPUT);
+  // Attach interrupt on rising edge of the pulse signal.
+  attachInterrupt(digitalPinToInterrupt(rpmPin), onRpmPulseRise, RISING);
 
   // BRAKES
   pinMode(breakRearPin, INPUT);
@@ -184,7 +242,7 @@ void loop() {
   dataFile.print(",");
   dataFile.print(timer);
   dataFile.print(",");  // <-- separator before first brake value
-
+  Serial.println("Time: " + timer);
 
   // THROTTLE (currently disabled)
   // digitalWrite(CS_PIN, LOW);
@@ -199,15 +257,21 @@ void loop() {
 
 
   // BRAKE PRESSURE (ADC counts)
-  int rearADC  = analogRead(breakRearPin);
-  int frontADC = analogRead(breakFrontPin);
+  int rearADC  = analogRead(brakeRearPin);
+  int frontADC = analogRead(brakeFrontPin);
+  double PSI_Rear = readtoPSI(rearADC);
+  double PSI_Front = readtoPSI(frontADC);
 
+  Serial.print("PSI_R = ");
+  Serial.print(PSI_Rear);
+  Serial.print("PSI_F = ");
+  Serial.println(PSI_Front);
+ 
 
   dataFile.print(rearADC);
   dataFile.print(",");
   dataFile.print(frontADC);
   dataFile.print(",");
-
 
   // ACCELEROMETER
   sensors_event_t event;
@@ -218,30 +282,44 @@ void loop() {
   dataFile.print(",");
   dataFile.print(event.acceleration.z / 9.8);
   dataFile.print(",");
+  
+  Serial.print("X: ");
+  Serial.print(event.acceleration.x/9.8);
+  Serial.print("Y: ");
+  Serial.print(event.acceleration.y/9.8);
+  Serial.print("Z: ");
+  Serial.println(event.acceleration.z/9.8);
+
+// WHEEL RPM block is currently commented out
 
 
-  // WHEEL RPM block is currently commented out
+// ENGINE RPM
+   // Make local copies of ISR-updated variables safely.
+  uint32_t periodCopy_us;
+  uint32_t lastTimeCopy_us;
 
+  // We briefly disable interrupts so we don't read half-updated values.
+  noInterrupts();
+  periodCopy_us   = lastPulsePeriod_us;
+  lastTimeCopy_us = lastPulseTime_us;
+  interrupts();
 
-  // ENGINE RPM
-  bool state = digitalRead(rpmPin);
-    if (state != prevState && state == HIGH) {
-      unsigned long currentSparkTime = millis();
-      if (prevTimeOfSpark != 0) {
-        timeBetweenSparks = currentSparkTime - prevTimeOfSpark;
-        if (timeBetweenSparks > 0) {
-          // 120000 = 60,000 ms/min * 2 revs/spark (example: .5 pulses per rev)
-          engineRPM = 120000.0 / (double)timeBetweenSparks;
-        }
-      }
+  uint32_t now_us = micros();
 
-      prevTimeOfSpark = currentSparkTime;
-    }
-    prevState = state;
- 
-  dataFile.print(engineRPM);
-  dataFile.println();
+  // If we haven't seen a pulse for a while, treat the engine as stopped.
+  if (lastTimeCopy_us == 0 || (now_us - lastTimeCopy_us) > NO_PULSE_TIMEOUT_us) {
+    engineRPM = 0.0f;
+  }
+  // If we have a valid period, compute RPM.
+  else if (periodCopy_us > 0) {
+    // Frequency (pulses per second) = 1,000,000 / period_us
+    // Pulses per minute = 60 * 1,000,000 / period_us = 60,000,000 / period_us
+    // Revolutions per minute (RPM) = (pulses per minute) / (pulses per revolution)
+    engineRPM = (60.0e6f / (float)periodCopy_us) / PULSES_PER_REVOLUTION;
+  }
 
+  Serial.print("RPM: ");
+  Serial.println(engineRPM);
 
   // Flush every 1000 ms
   if (timer - lastFlush >= 1000) {
