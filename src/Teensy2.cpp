@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <SPI.h>
 #include <EEPROM.h>
+#include <cmath>
 // #include <Adafruit_MLX90614.h>  // not used yet - note from kareem, i dont think our temp sensor is Adafruit i believe its smt else.
 
 const int chipSelect = BUILTIN_SDCARD;
@@ -30,11 +31,11 @@ const int brakeFrontPin = 22; //Changed from 41 to match PCB
 const int PSImax = 2000;
 const int PSImin = 0;
 //Maximum and Minimum voltages our pin is reading from the voltage divider.
-const int Vmax = 3.214; // Current Voltage Divider values. Update when V2 comes to 3.3V
-const int Vmin = .357; // Current Voltage Divider Values
+double Vmax = 3.214; // Current Voltage Divider values. Update when V2 comes to 3.3V
+double Vmin = .357; // Current Voltage Divider Values
 
 double readtoPSI(int readVoltage){
-  double V = read * 3.3 / 1023;
+  double V = readVoltage * 3.3 / 1023;
   float psi = ((V-Vmin) * (PSImax - PSImin) / (Vmax - Vmin)) + PSImin;
   //Mapping .357V -> 3.214V into 0-2000 PSI
   return psi;
@@ -137,8 +138,8 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(rpmPin), onRpmPulseRise, RISING);
 
   // BRAKES
-  pinMode(breakRearPin, INPUT);
-  pinMode(breakFrontPin, INPUT);
+  pinMode(brakeRearPin, INPUT);
+  pinMode(brakeFrontPin, INPUT);
 
 
   Serial.begin(9600);
@@ -184,8 +185,10 @@ void setup() {
 
 
     // Brake pressure (currently ADC counts)
-    dataFile.print("Rear ADC,");
-    dataFile.print("Front ADC,");
+    dataFile.print("Rear PSI,");
+    dataFile.print("RB_Raw,");
+    dataFile.print("Front PSI,");
+    dataFile.print("FB_Raw,");
 
 
     // ACCELEROMETER
@@ -264,11 +267,19 @@ void loop() {
 
   Serial.print("PSI_R = ");
   Serial.print(PSI_Rear);
-  Serial.print("PSI_F = ");
-  Serial.println(PSI_Front);
+  Serial.print(" PSI_VoltageR: ");
+  Serial.print(rearADC);
+  Serial.print(" PSI_F = ");
+  Serial.print(PSI_Front);
+  Serial.print(" PSI_VoltageF: ");
+  Serial.println(frontADC);
  
 
+  dataFile.print(PSI_Rear);
+  dataFile.print(",");
   dataFile.print(rearADC);
+  dataFile.print(",");
+  dataFile.print(PSI_Front);
   dataFile.print(",");
   dataFile.print(frontADC);
   dataFile.print(",");
@@ -285,9 +296,9 @@ void loop() {
   
   Serial.print("X: ");
   Serial.print(event.acceleration.x/9.8);
-  Serial.print("Y: ");
+  Serial.print(" Y: ");
   Serial.print(event.acceleration.y/9.8);
-  Serial.print("Z: ");
+  Serial.print(" Z: ");
   Serial.println(event.acceleration.z/9.8);
 
 // WHEEL RPM block is currently commented out
@@ -318,6 +329,9 @@ void loop() {
     engineRPM = (60.0e6f / (float)periodCopy_us) / PULSES_PER_REVOLUTION;
   }
 
+  dataFile.print(engineRPM);
+  dataFile.println(",");
+  
   Serial.print("RPM: ");
   Serial.println(engineRPM);
 
