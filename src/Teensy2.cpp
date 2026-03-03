@@ -64,7 +64,7 @@ volatile uint32_t lastPulsePeriod_us = 0;
   //   RPM = (60e6 / period_us) / 0.5 = 120e6 / period_us
   // If period_us = 40,000 us => RPM ~ 4000, which is above our expected range.
   // So anything faster than 40,000 us is noise/ringing.
-const uint32_t MIN_VALID_PERIOD_us = 15000;
+const uint32_t MIN_VALID_PERIOD_us = 33333;
 
   // Reject pulses that are extremely slow (could be a stopped engine / bad wiring).
   // 300000 us = 0.3 s between pulses
