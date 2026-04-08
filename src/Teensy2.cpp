@@ -5,7 +5,7 @@
 #include <SPI.h>
 #include <EEPROM.h>
 #include <cmath>
-// #include <Adafruit_MLX90614.h>  // not used yet - note from kareem, i dont think our temp sensor is Adafruit i believe its smt else.
+#include <TimeLib.h>
 
 const int chipSelect = BUILTIN_SDCARD;
 File dataFile;
@@ -28,17 +28,20 @@ const int CS_PIN = 10;
 const int brakeRearPin  = 21; //Changed from 40 to match PCB 
 const int brakeFrontPin = 22; //Changed from 41 to match PCB
 // Our Brake Sensors read 0-2000 PSI from .5V -> 4.5V.
-const int PSImax = 2000;
-const int PSImin = 0;
-//Maximum and Minimum voltages our pin is reading from the voltage divider.
-double Vmax = 3.214; // Current Voltage Divider values. Update when V2 comes to 3.3V
-double Vmin = .357; // Current Voltage Divider Values
+const double V_Logic = 3.3;
+const int ADC_Res = 1023;
 
-double readtoPSI(int readVoltage){
-  double V = readVoltage * 3.3 / 1023;
-  float psi = ((V-Vmin) * (PSImax - PSImin) / (Vmax - Vmin)) + PSImin;
-  //Mapping .357V -> 3.214V into 0-2000 PSI
-  return psi;
+const double V_Min = 0.357; // Based off our resistor divider (0.5 * 11/15)
+const double V_Max = 3.214; // Based off our resistor divider (4.5 * 11/15)
+const double PSI_Min = 0.0; // Data sheet of brake pressure sensor
+const double PSI_Max = 2000.0; // Data sheet of brake pressure sensor
+
+double convertToPSI(int read){
+
+  double V = read * V_Logic / ADC_Res;
+  double PSI = ((V-V_Min) / (V_Max - V_Min)) * (PSI_Max - PSI_Min) + PSI_Min;
+
+  return PSI; 
 }
 
 // ACCELEROMETER
@@ -51,42 +54,22 @@ const float PULSES_PER_REVOLUTION = 0.5f;
 
   // Timestamp (in microseconds) of the most recent detected rising edge (pulse).
 volatile uint32_t lastPulseTime_us = 0;
+volatile uint32_t lastValidPulseTime_us = 0;
 
   // Time difference (in microseconds) between the last two valid pulses.
   // This is the pulse period we use to compute RPM.
 volatile uint32_t lastPulsePeriod_us = 0;
-
-  // -----------------------------
-  // Noise filtering / sanity limits
-  // -----------------------------
+// If we dont get a period within 100 ms then the engine has to be off, read 0.
+const uint32_t TIMEOUT_us = 100000;
 
   // If pulses per revolution = 0.5, then
   //   RPM = (60e6 / period_us) / 0.5 = 120e6 / period_us
-  // If period_us = 40,000 us => RPM ~ 4000, which is above our expected range.
-  // So anything faster than 40,000 us is noise/ringing.
-const uint32_t MIN_VALID_PERIOD_us = 33333;
+  // At 50000us, 2400 RPM at 33333us, 3600 RPM. Smaller period = Higher RPM
+const uint32_t MAX_PERIOD_us = 50000;
+const uint32_t MIN_PERIOD_us = 33333;
 
-  // Reject pulses that are extremely slow (could be a stopped engine / bad wiring).
-  // 300000 us = 0.3 s between pulses
-const uint32_t MAX_VALID_PERIOD_us = 300000;
-
-  // If we haven’t seen a pulse for this long, force RPM to 0.
-const uint32_t NO_PULSE_TIMEOUT_us = 300000;
-
-  // -----------------------------
-  // Output (computed) RPM
-  // -----------------------------
 float engineRPM = 0.0f;
 
-  /*
-  Interrupt Service Routine (ISR)
-  Runs immediately when a rising edge is detected on rpmPin.
-
-  What it does:
-  1) Reads current time in microseconds.
-  2) Computes period since previous pulse.
-  3) If that period looks valid (not noise), stores it for the main loop to use.
-*/
 void onRpmPulseRise() {
   uint32_t now_us = micros();
 
@@ -94,14 +77,12 @@ void onRpmPulseRise() {
   if (lastPulseTime_us != 0) {
     uint32_t period_us = now_us - lastPulseTime_us;
 
-    // Basic noise filtering:
-    // - Too short  => likely electrical noise / ringing
-    // - Too long   => likely not a real running engine pulse (or first pulse after stop)
-    if (period_us >= MIN_VALID_PERIOD_us && period_us <= MAX_VALID_PERIOD_us) {
+    // From our graph we know our engine rpm can only be between 2400 to 3600, so any other values are worthless
+    if (period_us >= MIN_PERIOD_us && period_us <= MAX_PERIOD_us) {
       lastPulsePeriod_us = period_us;
+      lastValidPulseTime_us = now_us;
     }
   }
-
   // Always update the time of the most recent pulse
   lastPulseTime_us = now_us;
 }
@@ -141,9 +122,8 @@ void setup() {
   pinMode(brakeRearPin, INPUT);
   pinMode(brakeFrontPin, INPUT);
 
-
   Serial.begin(9600);
-
+  analogReadResolution(10);
 
   // SD
   if (!SD.begin(chipSelect)) {
@@ -156,12 +136,16 @@ void setup() {
     }
   }
 
+  //RTC - When this is first uploaded to the new PCB, AFTER THE FIRST UPLOAD COMMENT THE TWO LINES BELOW THIS.
+  setTime(14, 30, 0, 7, 4, 2026);
+  Teensy3Clock.set(now());
+  setSyncProvider(Teensy3Clock.get);
 
   // ACCEL
   if (!accel.begin()) {
     Serial.println("Error: ADXL345 not detected.");
   }
-
+  accel.setDataRate(ADXL345_DATARATE_200_HZ);
 
   // Run number from EEPROM
   int runNumber = EEPROM.read(runNumberAddress);
@@ -185,11 +169,8 @@ void setup() {
 
 
     // Brake pressure (currently ADC counts)
-    dataFile.print("Rear PSI,");
-    dataFile.print("RB_Raw,");
-    dataFile.print("Front PSI,");
-    dataFile.print("FB_Raw,");
-
+    dataFile.print("PSI_Front,"); //Completely unfiltered data taken at 5ms marks
+    dataFile.print("PSI_Rear,"); // Accounting for noise
 
     // ACCELEROMETER
     dataFile.print("Accel X g,");
@@ -222,6 +203,7 @@ void setup() {
 
 
 void loop() {
+
   if (!dataFile) {
     Serial.println("Error: dataFile invalid.");
     while (1) {
@@ -234,18 +216,15 @@ void loop() {
 
 
   // TIME
-  unsigned long timer = millis(); // This is super unreliable, I (Kareem) Highly recommend switching to an RTC Clock w/ Backup 3.2V Ion Cell (unsure if against rules)
-  unsigned int seconds = (timer / 1000) % 60;
-  unsigned int minutes = (timer / 60000) % 60;
-  unsigned int hours   = (timer / 3600000) % 60;
-  String timeStr = String(hours) + ":" + String(minutes) + ":" + String(seconds);
-
+  unsigned long timer = millis();
+  // THE ABOVE IS SPECIFICALLY FOR SD WRITING.
+  char timeStr[20];
+  snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hour(), minute(), second());
 
   dataFile.print(timeStr);
   dataFile.print(",");
   dataFile.print(timer);
-  dataFile.print(",");  // <-- separator before first brake value
-  Serial.println("Time: " + timer);
+  dataFile.print(",");
 
   // THROTTLE (currently disabled)
   // digitalWrite(CS_PIN, LOW);
@@ -260,68 +239,45 @@ void loop() {
 
 
   // BRAKE PRESSURE (ADC counts)
-  int rearADC  = analogRead(brakeRearPin);
-  int frontADC = analogRead(brakeFrontPin);
-  double PSI_Rear = readtoPSI(rearADC);
-  double PSI_Front = readtoPSI(frontADC);
+  int rearRaw = analogRead(brakeRearPin);
+  int frontRaw = analogRead(brakeFrontPin);
 
-  Serial.print("PSI_R = ");
-  Serial.print(PSI_Rear);
-  Serial.print(" PSI_VoltageR: ");
-  Serial.print(rearADC);
-  Serial.print(" PSI_F = ");
-  Serial.print(PSI_Front);
-  Serial.print(" PSI_VoltageF: ");
-  Serial.println(frontADC);
+  double rearPSI_raw = convertToPSI(rearRaw);
+  double frontPSI_raw = convertToPSI(frontRaw);
  
-
-  dataFile.print(PSI_Rear);
+  dataFile.print(frontPSI_raw);
   dataFile.print(",");
-  dataFile.print(rearADC);
-  dataFile.print(",");
-  dataFile.print(PSI_Front);
-  dataFile.print(",");
-  dataFile.print(frontADC);
+  dataFile.print(rearPSI_raw);
   dataFile.print(",");
 
   // ACCELEROMETER
   sensors_event_t event;
   accel.getEvent(&event);
+
   dataFile.print(event.acceleration.x / 9.8);
   dataFile.print(",");
   dataFile.print(event.acceleration.y / 9.8);
   dataFile.print(",");
   dataFile.print(event.acceleration.z / 9.8);
   dataFile.print(",");
-  
-  Serial.print("X: ");
-  Serial.print(event.acceleration.x/9.8);
-  Serial.print(" Y: ");
-  Serial.print(event.acceleration.y/9.8);
-  Serial.print(" Z: ");
-  Serial.println(event.acceleration.z/9.8);
-
-// WHEEL RPM block is currently commented out
-
 
 // ENGINE RPM
    // Make local copies of ISR-updated variables safely.
   uint32_t periodCopy_us;
-  uint32_t lastTimeCopy_us;
+  uint32_t lastValidTimeCopy_us;
 
   // We briefly disable interrupts so we don't read half-updated values.
   noInterrupts();
-  periodCopy_us   = lastPulsePeriod_us;
-  lastTimeCopy_us = lastPulseTime_us;
+  periodCopy_us = lastPulsePeriod_us;
+  lastValidTimeCopy_us = lastValidPulseTime_us;
   interrupts();
 
   uint32_t now_us = micros();
 
-  // If we haven't seen a pulse for a while, treat the engine as stopped.
-  if (lastTimeCopy_us == 0 || (now_us - lastTimeCopy_us) > NO_PULSE_TIMEOUT_us) {
+  // If we have a valid period, compute RPM.
+  if (lastValidTimeCopy_us == 0 || (now_us - lastValidTimeCopy_us) > TIMEOUT_us){
     engineRPM = 0.0f;
   }
-  // If we have a valid period, compute RPM.
   else if (periodCopy_us > 0) {
     // Frequency (pulses per second) = 1,000,000 / period_us
     // Pulses per minute = 60 * 1,000,000 / period_us = 60,000,000 / period_us
@@ -329,16 +285,12 @@ void loop() {
     engineRPM = (60.0e6f / (float)periodCopy_us) / PULSES_PER_REVOLUTION;
   }
 
-  dataFile.print(engineRPM);
-  dataFile.println(",");
+  dataFile.println(engineRPM);
   
-  Serial.print("RPM: ");
-  Serial.println(engineRPM);
-
   // Flush every 1000 ms
   if (timer - lastFlush >= 1000) {
     dataFile.flush();
     lastFlush = timer;
   }
-delay(2);
+
 }
