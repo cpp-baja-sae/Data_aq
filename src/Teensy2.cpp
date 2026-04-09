@@ -91,7 +91,7 @@ void onRpmPulseRise() {
   lastPulseTime_us = now_us;
 }
 
-// WHEEL RPM (currently unused, kept for future)
+// WHEEL RPM
 const int wheelRpmPin = 23;
 const int TEETH = 14;
 unsigned long timerSinceLastTooth = 0;
