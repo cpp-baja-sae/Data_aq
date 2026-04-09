@@ -6,15 +6,49 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <EEPROM.h>
-
-// TIME
-unsigned long rpmTimer = 0;
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // TEMP
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 double currAmbientTempF = 0;
 double currObjectTempF = 0;
 unsigned long tempTimer = 0;
+
+// SCREEN
+#define OLED_W 128
+#define OLED_H 64
+#define OLED_ADDR 0x3C
+//#define MASTER_ADDR 0x12
+
+Adafruit_SSD1306 display(OLED_W, OLED_H, &Wire, -1);
+
+//volatile int16_t rxObjC = INT16_MIN;
+//volatile int16_t rxAmbC = INT16_MIN;
+//volatile bool newPacket = false;
+
+// char msg[48] = "Obj: --   Amb: --";
+//int16_t textX = 0;
+//int16_t textY = 0;
+// Function below is Teensy-Teensy
+//void onReceiveMaster(int len) {
+//  if (len < 4) {
+//    while (Wire1.available()){
+//     Wire1.read();
+//    }
+//    return;
+//  }
+//  uint8_t b0 = Wire1.read();
+//  uint8_t b1 = Wire1.read();
+//  uint8_t b2 = Wire1.read();
+//  uint8_t b3 = Wire1.read();
+//  while (Wire1.available()){
+//    Wire1.read();
+//  }
+//  rxObjC = (int16_t)((b0 << 8) | b1);
+//  rxAmbC = (int16_t)((b2 << 8) | b3);
+//  newPacket = true;
+//}
 
 // STEERING
 const int steeringPin = 40;
@@ -23,13 +57,6 @@ const int steeringPin = 40;
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 sensors_event_t accelEvent;
 
-// ENGINE RPM
-const int rpmPin = 33;
-unsigned long timeOfSpark = 0;
-unsigned long prevTimeOfSpark = 0;
-unsigned long timeBetweenSparks = 0;
-double engineRPM = 0;
-bool prevState = LOW;
 
 // FILE
 const int chipSelect = BUILTIN_SDCARD;
@@ -61,6 +88,21 @@ void setup() {
     accel.setRange(ADXL345_RANGE_16_G);
     Serial.println("Adafruit ADXL345 Initialized");
   }
+
+  // SCREEN
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)){
+    Serial.println("SSD1306 init failed");
+    while (1);
+  }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  // Uncomment if Teensy-Teensy is needed
+  // Wire1.begin(MASTER_ADDR);
+  // Wire1.onReceive(onReceiveMaster);
+
+  display.display();
 
   // SD
   if (!SD.begin(chipSelect)) {
@@ -133,6 +175,19 @@ void loop() {
     tempTimer = now;
     currObjectTempF = mlx.readObjectTempF();
     currAmbientTempF = mlx.readAmbientTempF();
+
+    display.clearDisplay();
+    display.drawRect(0, 0, OLED_W, OLED_H, SSD1306_WHITE);
+    // Change setCursor values to determine where u want text to appear on the screen
+    display.setCursor(10, 15);
+    display.print("Obj: ");
+    display.print(currObjectTempF, 1);
+    display.print("F");
+    display.setCursor(10, 35);
+    display.print("Amb: ");
+    display.print(currAmbientTempF, 1);
+    display.print("F");
+    display.display();
   }
 
   // ACCEL
@@ -163,12 +218,8 @@ void loop() {
     dataFile.print(",");
     dataFile.print(y_g);
     dataFile.print(",");
-    dataFile.print(z_g);
+    dataFile.println(z_g);
     //dataFile.print(",");
-
-    //ENGINERPM
-    //dataFile.print(engineRPM);
-    dataFile.println();
 
     if (now - flushTimer >= 4000) {
       flushTimer = now;
