@@ -7,27 +7,25 @@
 #include <cmath>
 #include <TimeLib.h>
 
+// SD CARD
 const int chipSelect = BUILTIN_SDCARD;
 File dataFile;
 char fileName[20];
 const int runNumberAddress = 0;
 
-
+// LED
 const int LED_PIN = LED_BUILTIN;
-
 
 // TIME
 unsigned long lastFlush = 0;
 
-
-// THROTTLE (commented out for now)
+// THROTTLE (Commented Out)
 const int CS_PIN = 10;
 
-
 // BRAKES
-const int brakeRearPin  = 21; //Changed from 40 to match PCB 
-const int brakeFrontPin = 22; //Changed from 41 to match PCB
-// Our Brake Sensors read 0-2000 PSI from .5V -> 4.5V.
+const int brakeRearPin  = 27; //Changed from 40 to match PCB 
+const int brakeFrontPin = 26; //Changed from 41 to match PCB
+  // Our Brake Sensors read 0-2000 PSI from .5V -> 4.5V.
 const double V_Logic = 3.3;
 const int ADC_Res = 1023;
 
@@ -104,13 +102,15 @@ void onRpmPulseRise() {
 
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);
 
+// LED ON
+  pinMode(LED_PIN, OUTPUT);
 
 // THROTTLE SPI (currently not used)
   SPI.begin();
   pinMode(CS_PIN, OUTPUT);
   digitalWrite(CS_PIN, HIGH);
+
 // Engine RPM
   // Use INPUT if your sensor output is a clean push-pull digital signal.
   // Use INPUT_PULLUP only if your sensor output is open-collector/open-drain.
@@ -118,14 +118,14 @@ void setup() {
   // Attach interrupt on rising edge of the pulse signal.
   attachInterrupt(digitalPinToInterrupt(rpmPin), onRpmPulseRise, RISING);
 
-  // BRAKES
+// BRAKES
   pinMode(brakeRearPin, INPUT);
   pinMode(brakeFrontPin, INPUT);
 
   Serial.begin(9600);
   analogReadResolution(10);
 
-  // SD
+// SD
   if (!SD.begin(chipSelect)) {
     Serial.println("Error: SD card initialization failed!");
     while (1) {
@@ -136,12 +136,12 @@ void setup() {
     }
   }
 
-  //RTC - When this is first uploaded to the new PCB, AFTER THE FIRST UPLOAD COMMENT THE TWO LINES BELOW THIS.
+//RTC - When this is first uploaded to the new PCB, AFTER THE FIRST UPLOAD COMMENT THE TWO LINES BELOW THIS.
   setTime(14, 30, 0, 7, 4, 2026);
   Teensy3Clock.set(now());
   setSyncProvider(Teensy3Clock.get);
 
-  // ACCEL
+// ACCEL
   if (!accel.begin()) {
     Serial.println("Error: ADXL345 not detected.");
   }
@@ -152,12 +152,10 @@ void setup() {
   runNumber++;
   EEPROM.write(runNumberAddress, runNumber);
 
-
+// SD CARD
   sprintf(fileName, "Teensy2_%d.csv", runNumber);
 
-
   dataFile = SD.open(fileName, FILE_WRITE);
-
 
   if (dataFile) {
     dataFile.print("hours:minutes:seconds,");
@@ -204,6 +202,7 @@ void setup() {
 
 void loop() {
 
+// SD CARD FAIL INDICATOR
   if (!dataFile) {
     Serial.println("Error: dataFile invalid.");
     while (1) {
@@ -215,7 +214,7 @@ void loop() {
   }
 
 
-  // TIME
+// TIME STAMP
   unsigned long timer = millis();
   // THE ABOVE IS SPECIFICALLY FOR SD WRITING.
   char timeStr[20];
@@ -226,7 +225,7 @@ void loop() {
   dataFile.print(timer);
   dataFile.print(",");
 
-  // THROTTLE (currently disabled)
+// THROTTLE (DISABLED L22)
   // digitalWrite(CS_PIN, LOW);
   // SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE1));
   // uint16_t result = SPI.transfer16(0x0000);
@@ -238,7 +237,7 @@ void loop() {
   // dataFile.print(",");
 
 
-  // BRAKE PRESSURE (ADC counts)
+// BRAKE PRESSURE (ADC counts)
   int rearRaw = analogRead(brakeRearPin);
   int frontRaw = analogRead(brakeFrontPin);
 
@@ -250,7 +249,7 @@ void loop() {
   dataFile.print(rearPSI_raw);
   dataFile.print(",");
 
-  // ACCELEROMETER
+// ACCELEROMETER
   sensors_event_t event;
   accel.getEvent(&event);
 
