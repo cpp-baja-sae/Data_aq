@@ -52,7 +52,7 @@ double convertToPSI(int read){
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 
 // ENGINE RPM
-const int rpmPin = 23;  // Digital input pin that receives the RPM pulse signal
+const int rpmPin = 21;  // Digital input pin that receives the RPM pulse signal
 
 const float PULSES_PER_REVOLUTION = 0.5f;  
 
@@ -92,7 +92,7 @@ void onRpmPulseRise() {
 }
 
 // WHEEL RPM (currently unused, kept for future)
-// const int rpmPin = 4;
+// const int rpmPin = 23;
 // const int TEETH = 14;
 // const int microPerTooth = 60000000 / TEETH;
 // unsigned long timerForTooth = 0;
