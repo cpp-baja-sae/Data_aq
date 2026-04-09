@@ -52,7 +52,7 @@ double convertToPSI(int read){
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 
 // ENGINE RPM
-const int rpmPin = 21;  // Digital input pin that receives the RPM pulse signal
+const int engineRpmPin = 21;  // Digital input pin that receives the RPM pulse signal
 
 const float PULSES_PER_REVOLUTION = 0.5f;  
 
@@ -92,19 +92,13 @@ void onRpmPulseRise() {
 }
 
 // WHEEL RPM (currently unused, kept for future)
-// const int rpmPin = 23;
-// const int TEETH = 14;
-// const int microPerTooth = 60000000 / TEETH;
-// unsigned long timerForTooth = 0;
-// unsigned long timerForLastTooth = 0;
-// unsigned long timer3 = 0;
-// unsigned long timerSinceLastTooth = 0;
-// int state = 0;
-// int lastState = 0;
-// double timeBetweenTeeth;
-// double revMin;
-// double lastRevMin = 0;
-// const int stuffingCutOff = 1000;
+const int wheelRpmPin = 23;
+const int TEETH = 14;
+unsigned long timerSinceLastTooth = 0;
+bool lastState = 0;
+double wheelRPM = 0;
+const int wheelTimeOut = 500; // ms
+
 
 
 void setup() {
@@ -120,9 +114,12 @@ void setup() {
 // Engine RPM
   // Use INPUT if your sensor output is a clean push-pull digital signal.
   // Use INPUT_PULLUP only if your sensor output is open-collector/open-drain.
-  pinMode(rpmPin, INPUT);
+  pinMode(engineRpmPin, INPUT);
   // Attach interrupt on rising edge of the pulse signal.
-  attachInterrupt(digitalPinToInterrupt(rpmPin), onRpmPulseRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(engineRpmPin), onRpmPulseRise, RISING);
+
+// Wheel RPM
+  pinMode(wheelRpmPin, INPUT);
 
 // BRAKES
   pinMode(brakeRearPin, INPUT);
@@ -184,7 +181,7 @@ void setup() {
 
 
     // WHEEL RPM (disabled)
-    // dataFile.print(",Rear RPM");
+    dataFile.print(",Rear RPM");
 
 
     dataFile.println();
@@ -290,7 +287,28 @@ void loop() {
     engineRPM = (60.0e6f / (float)periodCopy_us) / PULSES_PER_REVOLUTION;
   }
 
-  dataFile.println(engineRPM);
+  dataFile.print(engineRPM);
+  dataFile.print(",");
+
+  // WHEEL RPM
+  bool currentState = digitalRead(wheelRpmPin);
+  if (currentState != lastState && currentState == HIGH) {
+    unsigned long currentTime = millis();
+    if (timerSinceLastTooth != 0) {
+      double timeBetweenTeeth = currentTime - timerSinceLastTooth;
+      if (timeBetweenTeeth > 0 && (timeBetweenTeeth < wheelTimeOut)) {
+        // 60,000 ms/min
+        wheelRPM = 60000 / ((double)timeBetweenTeeth * TEETH);
+      }
+      else{
+        wheelRPM = 0;
+      }
+    }
+    timerSinceLastTooth = currentTime;
+  }
+  lastState = currentState;
+
+  dataFile.println(wheelRPM);
   
   // Flush every 1000 ms
   if (timer - lastFlush >= 1000) {
