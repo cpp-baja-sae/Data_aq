@@ -1,3 +1,9 @@
+/*
+MCU: Teensy 4.1
+PCB: Teensy 2 v2
+4/9/2026 - Kareem
+*/
+
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL345_U.h>
