@@ -1,7 +1,7 @@
 /*
 MCU: Teensy 4.1
 PCB: Teensy 2 v2
-4/9/2026 - Kareem
+4/9/2026 - Kareem + Jason
 */
 
 #include <Wire.h>
@@ -13,22 +13,25 @@ PCB: Teensy 2 v2
 #include <cmath>
 #include <TimeLib.h>
 
-// SD CARD
+// SD CONST
 const int chipSelect = BUILTIN_SDCARD;
 File dataFile;
 char fileName[20];
 const int runNumberAddress = 0;
 
-// LED
+// LED CONST
 const int LED_PIN = LED_BUILTIN;
 
-// TIME
+// TIME CONST
+time_t getTeensyTime() {
+    return Teensy3Clock.get();
+}
 unsigned long lastFlush = 0;
 
-// THROTTLE (Commented Out)
+// THROTTLE CONST (DEACTIVATED)
 const int CS_PIN = 10;
 
-// BRAKES
+// BRAKES CONST
 const int brakeRearPin  = 27; //Changed from 40 to match PCB 
 const int brakeFrontPin = 26; //Changed from 41 to match PCB
   // Our Brake Sensors read 0-2000 PSI from .5V -> 4.5V.
@@ -48,10 +51,10 @@ double convertToPSI(int read){
   return PSI; 
 }
 
-// ACCELEROMETER
+// ACCELEROMETER CONST
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 
-// ENGINE RPM
+// ENGINE RPM CONST
 const int engineRpmPin = 21;  // Digital input pin that receives the RPM pulse signal
 
 const float PULSES_PER_REVOLUTION = 0.5f;  
@@ -91,7 +94,7 @@ void onRpmPulseRise() {
   lastPulseTime_us = now_us;
 }
 
-// WHEEL RPM
+// WHEEL RPM CONST
 const int wheelRpmPin = 23;
 const int TEETH = 14;
 unsigned long timerSinceLastTooth = 0;
@@ -102,33 +105,33 @@ const int wheelTimeOut = 500; // ms
 
 
 void setup() {
+// INITIALIZATION
+  Serial.begin(9600);
+  analogReadResolution(10);
 
-// LED ON
+// LED INIT
   pinMode(LED_PIN, OUTPUT);
 
-// THROTTLE SPI (currently not used)
+// THROTTLE INIT (DEACTIVATED)
   SPI.begin();
   pinMode(CS_PIN, OUTPUT);
   digitalWrite(CS_PIN, HIGH);
 
-// Engine RPM
+// ERPM INIT
   // Use INPUT if your sensor output is a clean push-pull digital signal.
   // Use INPUT_PULLUP only if your sensor output is open-collector/open-drain.
   pinMode(engineRpmPin, INPUT);
   // Attach interrupt on rising edge of the pulse signal.
   attachInterrupt(digitalPinToInterrupt(engineRpmPin), onRpmPulseRise, RISING);
 
-// Wheel RPM
+// Wheel RPM INIT
   pinMode(wheelRpmPin, INPUT);
 
-// BRAKES
+// BRAKES INIT
   pinMode(brakeRearPin, INPUT);
   pinMode(brakeFrontPin, INPUT);
 
-  Serial.begin(9600);
-  analogReadResolution(10);
-
-// SD
+// SD ERROR
   if (!SD.begin(chipSelect)) {
     Serial.println("Error: SD card initialization failed!");
     while (1) {
@@ -139,54 +142,52 @@ void setup() {
     }
   }
 
-//RTC - When this is first uploaded to the new PCB, AFTER THE FIRST UPLOAD COMMENT THE TWO LINES BELOW THIS.
+//RTC INIT - (When this is first uploaded to the new PCB, AFTER THE FIRST UPLOAD COMMENT THE TWO LINES BELOW THIS.)
   setTime(14, 30, 0, 7, 4, 2026);
   Teensy3Clock.set(now());
-  setSyncProvider(Teensy3Clock.get);
+  setSyncProvider(getTeensyTime);
 
-// ACCEL
+// ACCEL ERROR
   if (!accel.begin()) {
     Serial.println("Error: ADXL345 not detected.");
   }
   accel.setDataRate(ADXL345_DATARATE_200_HZ);
 
-  // Run number from EEPROM
+// RUN # FROM EEPROM
   int runNumber = EEPROM.read(runNumberAddress);
   runNumber++;
   EEPROM.write(runNumberAddress, runNumber);
 
-// SD CARD
+// SD INIT
   sprintf(fileName, "Teensy2_%d.csv", runNumber);
 
   dataFile = SD.open(fileName, FILE_WRITE);
 
+// FILE HEADER
   if (dataFile) {
+  // TIME
     dataFile.print("hours:minutes:seconds,");
     dataFile.print("millis,");  // total milliseconds
 
-
-    // THROTTLE (currently disabled)
+  // THROTTLE (DEACTIVATED)
     // dataFile.print("Throttle Angle,");
 
-
-    // Brake pressure (currently ADC counts)
+  // BRAKE PRESSURE
     dataFile.print("PSI_Front,"); //Completely unfiltered data taken at 5ms marks
     dataFile.print("PSI_Rear,"); // Accounting for noise
 
-    // ACCELEROMETER
+  // ACCELEROMETER
     dataFile.print("Accel X g,");
     dataFile.print("Accel Y g,");
     dataFile.print("Accel Z g,");
-    dataFile.print("Eng RPM");
+    dataFile.print("Eng RPM,");
 
-
-    // WHEEL RPM (disabled)
-    dataFile.print(",Rear RPM");
-
+  // WHEEL RPM
+    dataFile.print("Rear RPM");
 
     dataFile.println();
 
-
+// SD ERROR
     Serial.print("Logging to file: ");
     Serial.println(fileName);
     digitalWrite(LED_PIN, LOW);
@@ -205,7 +206,7 @@ void setup() {
 
 void loop() {
 
-// SD CARD FAIL INDICATOR
+// FILE ERROR
   if (!dataFile) {
     Serial.println("Error: dataFile invalid.");
     while (1) {
@@ -228,7 +229,7 @@ void loop() {
   dataFile.print(timer);
   dataFile.print(",");
 
-// THROTTLE (DISABLED L22)
+// THROTTLE (DISABLED L31)
   // digitalWrite(CS_PIN, LOW);
   // SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE1));
   // uint16_t result = SPI.transfer16(0x0000);
@@ -240,7 +241,7 @@ void loop() {
   // dataFile.print(",");
 
 
-// BRAKE PRESSURE (ADC counts)
+// BRAKE PRESSURE
   int rearRaw = analogRead(brakeRearPin);
   int frontRaw = analogRead(brakeFrontPin);
 
@@ -290,7 +291,7 @@ void loop() {
   dataFile.print(engineRPM);
   dataFile.print(",");
 
-  // WHEEL RPM
+// WHEEL RPM
   bool currentState = digitalRead(wheelRpmPin);
   if (currentState != lastState && currentState == HIGH) {
     unsigned long currentTime = millis();
@@ -310,7 +311,7 @@ void loop() {
 
   dataFile.println(wheelRPM);
   
-  // Flush every 1000 ms
+// FLUSH EVERY 1 SEC
   if (timer - lastFlush >= 1000) {
     dataFile.flush();
     lastFlush = timer;
