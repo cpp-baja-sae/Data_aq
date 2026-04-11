@@ -23,9 +23,26 @@ const int runNumberAddress = 0;
 const int LED_PIN = LED_BUILTIN;
 
 // TIME CONST
+#define TIME_HEADER  "T"   // Header tag for serial time sync message
+
+unsigned long processSyncMessage() {
+  unsigned long pctime = 0L;
+  const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013 
+
+  if(Serial.find(TIME_HEADER)) {
+     pctime = Serial.parseInt();
+     return pctime;
+     if( pctime < DEFAULT_TIME) { // check the value is a valid time (greater than Jan 1 2013)
+       pctime = 0L; // return 0 to indicate that the time is not valid
+     }
+  }
+  return pctime;
+}
+
 time_t getTeensyTime() {
     return Teensy3Clock.get();
 }
+
 unsigned long lastFlush = 0;
 
 // THROTTLE CONST (DEACTIVATED)
@@ -142,10 +159,25 @@ void setup() {
     }
   }
 
-//RTC INIT - (When this is first uploaded to the new PCB, AFTER THE FIRST UPLOAD COMMENT THE TWO LINES BELOW THIS.)
-  setTime(14, 30, 0, 7, 4, 2026);
-  Teensy3Clock.set(now());
-  setSyncProvider(getTeensyTime);
+// RTC INIT
+  setSyncProvider(getTeensyTime); // Sets Time.lib to use RTC
+  // If not set, sync time
+  if (timeStatus()!= timeSet) {
+    if (Serial.available()) {
+      time_t t = processSyncMessage();
+      if (t != 0) {
+        Teensy3Clock.set(t); // set the RTC
+        setTime(t);
+      }
+    }
+  }
+
+// RTC ERROR
+  if (timeStatus()!= timeSet) {
+    Serial.println("Unable to sync with the RTC");
+  } else {
+    Serial.println("RTC has set the system time");
+  }
 
 // ACCEL ERROR
   if (!accel.begin()) {
