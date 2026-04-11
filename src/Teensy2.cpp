@@ -183,9 +183,7 @@ void setup() {
     dataFile.print("Eng RPM,");
 
   // WHEEL RPM
-    dataFile.print("Rear RPM");
-
-    dataFile.println();
+    dataFile.println("Rear RPM");
 
 // SD ERROR
     Serial.print("Logging to file: ");
