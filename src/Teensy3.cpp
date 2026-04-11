@@ -180,9 +180,8 @@ void setup() {
   dataFile.print("Y g,");
   dataFile.print("Z g,");
   dataFile.print("FL RPM,");
-  dataFile.print("FR RPM,");
+  dataFile.println("FR RPM,");
   //dataFile.print("Eng RPM");
-  dataFile.println();
   dataFile.flush();
   //You best keep being your goofy ahh self Mckay
   Serial.print("Logging to file: ");
