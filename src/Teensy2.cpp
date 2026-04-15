@@ -232,8 +232,11 @@ void setup() {
     }
   }
 }
-
-
+// Light will flash Amber for 1 sec to indicate processes went through.
+  Serial.println("Booting!");
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(1000);
+      digitalWrite(LED_BUILTIN, LOW);
 void loop() {
 
 // FILE ERROR
