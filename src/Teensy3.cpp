@@ -46,7 +46,7 @@ double wheelRPMR = 0;
 const int wheelTimeOutR = 500; // ms
 
 // STEERING CONST
-const int steeringPin = 40;
+const int steeringPin = 27;
 
 // ACCEL CONST
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
@@ -190,6 +190,11 @@ void setup() {
 //
   flushTimer = millis();
   tempTimer = millis();
+// Light will flash Amber for 1 sec to indicate processes went through.
+  Serial.println("Booting!");
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(1000);
+      digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
