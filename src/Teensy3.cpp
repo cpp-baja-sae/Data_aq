@@ -7,7 +7,7 @@ PCB: Teensy 3 v2
 #include <TimeLib.h>
 #include <SD.h>
 #include <Adafruit_MLX90614.h>
-#include <Adafruit_ADXL345_U.h>
+#include <Adafruit_LSM6DSOX.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <EEPROM.h>
@@ -47,9 +47,8 @@ const int wheelTimeOutR = 500; // ms
 // STEERING CONST
 const int steeringPin = 27;
 
-// ACCEL CONST
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
-sensors_event_t accelEvent;
+// ACCEL/GYRO CONST
+Adafruit_LSM6DSOX gyro;
 
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
@@ -132,12 +131,15 @@ void setup() {
     Serial.println("Adafruit MLX90614 Initialized");
   }
 
-// ACCEL ERROR
-  if (!accel.begin()) {
-    Serial.println("No ADXL345 sensor detected.");
+// ACCEL/GYRO ERROR
+  if (!gyro.begin_I2C()) {
+    Serial.println("No Gyro sensor detected.");
   } else {
-    accel.setRange(ADXL345_RANGE_16_G);
-    Serial.println("Adafruit ADXL345 Initialized");
+    gyro.setAccelRange(LSM6DS_ACCEL_RANGE_16_G);
+    gyro.setGyroRange(LSM6DS_GYRO_RANGE_500_DPS);
+    gyro.setAccelDataRate(LSM6DS_RATE_208_HZ);
+    gyro.setGyroDataRate(LSM6DS_RATE_208_HZ);
+    Serial.println("Adafruit LSM6DSOX Initialized");
   }
 
 // SD ERROR
@@ -181,6 +183,9 @@ void setup() {
   dataFile.print("X g,");
   dataFile.print("Y g,");
   dataFile.print("Z g,");
+  dataFile.print("X rad/s,");
+  dataFile.print("Y rad/s,");
+  dataFile.print("Z rad/s,");
   dataFile.print("FL RPM,");
   dataFile.println("FR RPM");
   //dataFile.print("Eng RPM");
@@ -239,11 +244,19 @@ void loop() {
     display.display();
   }
 
-// ACCEL
-  accel.getEvent(&accelEvent);
+// ACCEL/GYRO
+
+  sensors_event_t accelEvent;
+  sensors_event_t gyroEvent;
+  sensors_event_t tempEvent;
+  
+  gyro.getEvent(&accelEvent, &gyroEvent, &tempEvent);
   float x_g = accelEvent.acceleration.x / 9.8;
   float y_g = accelEvent.acceleration.y / 9.8;
   float z_g = accelEvent.acceleration.z / 9.8;
+  float x_rads = gyroEvent.gyro.x;
+  float y_rads = gyroEvent.gyro.y;
+  float z_rads = gyroEvent.gyro.z;
 
 // LEFT WHEEL RPM
   bool currentStateL = digitalRead(wheelRpmPinL);
@@ -314,6 +327,12 @@ void loop() {
     dataFile.print(",");
     dataFile.print(z_g);
     dataFile.print(",");
+    dataFile.print(x_rads);
+    dataFile.print(",");
+    dataFile.print(y_rads);
+    dataFile.print(",");
+    dataFile.print(z_rads);
+    dataFile.print(",");
 
   // WHEEL RPM
     dataFile.print(wheelRPML);
@@ -328,6 +347,8 @@ void loop() {
   }
 
 // SERIAL DEBUG
+static uint32_t debug_timer = 0;
+if (board_timer - debug_timer < 1000){
   Serial.print(timeStr);
   Serial.print(", ");
   Serial.print(board_timer);
@@ -336,8 +357,21 @@ void loop() {
   Serial.print("F, ");
   Serial.print(currAmbientTempF);
   Serial.print("F, ");
-  Serial.print("angle=");
-  Serial.println(angle);
+  Serial.print("angle= ");
+  Serial.print(angle);
+  Serial.print(" ax = ");
+  Serial.print(x_g);
+  Serial.print(" ay = ");
+  Serial.print(y_g);
+  Serial.print(" az = ");
+  Serial.print(z_g);
+  Serial.print(" gyro_x = ");
+  Serial.print(x_rads);
+  Serial.print(" gyro_y = ");
+  Serial.print(y_rads);
+  Serial.print(" gyro_z = ");
+  Serial.println(z_rads);
   //Serial.print(", RPM=");
   //Serial.println(engineRPM);
+  }
 }
