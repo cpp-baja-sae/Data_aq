@@ -13,6 +13,8 @@ PCB: Teensy 2 v2
 #include <cmath>
 #include <TimeLib.h>
 
+#define MASTER_ADDR 0x12
+
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
 File dataFile;
@@ -24,6 +26,7 @@ const int LED_PIN = LED_BUILTIN;
 
 // TIME CONST
 #define TIME_HEADER  "T"   // Header tag for serial time sync message
+unsigned long lastTimeSync = 0;
 
 unsigned long processSyncMessage() {
   unsigned long pctime = 0L;
@@ -40,6 +43,17 @@ unsigned long processSyncMessage() {
 
 time_t getTeensyTime() {
     return Teensy3Clock.get();
+}
+
+void sendTime() {
+  uint32_t t = now(); // get current unix timestamp (4 bytes)
+  
+  Wire1.beginTransmission(MASTER_ADDR);
+  Wire1.write((t >> 24) & 0xFF); // byte 3
+  Wire1.write((t >> 16) & 0xFF); // byte 2
+  Wire1.write((t >> 8)  & 0xFF); // byte 1
+  Wire1.write((t)       & 0xFF); // byte 0
+  Wire1.endTransmission();
 }
 
 unsigned long lastFlush = 0;
@@ -160,6 +174,7 @@ void setup() {
 
 // RTC INIT
   setSyncProvider(getTeensyTime); // Sets Time.lib to use RTC
+  Wire1.begin();
   // If not set, sync time
   if (timeStatus()!= timeSet) {
     if (Serial.available()) {
@@ -230,12 +245,12 @@ void setup() {
       delay(250);
     }
   }
-}
-// Light will flash Amber for 1 sec to indicate processes went through.
+  // Light will flash Amber for 1 sec to indicate processes went through.
   Serial.println("Booting!");
       digitalWrite(LED_BUILTIN, HIGH);
       delay(1000);
       digitalWrite(LED_BUILTIN, LOW);
+}
 void loop() {
 
 // FILE ERROR
@@ -251,15 +266,20 @@ void loop() {
 
 
 // TIME STAMP
-  unsigned long timer = millis();
+  unsigned long board_timer = millis();
   // THE ABOVE IS SPECIFICALLY FOR SD WRITING.
   char timeStr[20];
   snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hour(), minute(), second());
 
   dataFile.print(timeStr);
   dataFile.print(",");
-  dataFile.print(timer);
+  dataFile.print(board_timer);
   dataFile.print(",");
+  
+  if (board_timer - lastTimeSync >= 1000) {
+    lastTimeSync = board_timer;
+    sendTime();
+  }
 
 // THROTTLE (DISABLED L31)
   // digitalWrite(CS_PIN, LOW);
@@ -341,12 +361,16 @@ void loop() {
   }
   lastState = currentState;
 
+  if (millis() - timerSinceLastTooth > wheelTimeOut) {
+    wheelRPM = 0;
+  }
+
   dataFile.println(wheelRPM);
   
 // FLUSH EVERY 1 SEC
-  if (timer - lastFlush >= 1000) {
+  if (board_timer - lastFlush >= 1000) {
     dataFile.flush();
-    lastFlush = timer;
+    lastFlush = board_timer;
   }
 
 }
