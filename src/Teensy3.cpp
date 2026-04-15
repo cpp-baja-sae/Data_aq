@@ -68,6 +68,8 @@ unsigned long flushTimer = 0;
 //int16_t textX = 0;
 //int16_t textY = 0;
 */
+volatile uint32_t pendingTime = 0;
+volatile bool timeUpdatePending = false;
 
 void onReceiveMaster(int len) {
   if (len < 4) {
@@ -82,8 +84,8 @@ void onReceiveMaster(int len) {
   t |= (uint32_t)Wire1.read() << 8;
   t |= (uint32_t)Wire1.read();
 
-  setTime(t);
-  Teensy3Clock.set(t);
+  pendingTime = t;
+  timeUpdatePending = true;
   //rxObjC = (int16_t)((b0 << 8) | b1);
   //rxAmbC = (int16_t)((b2 << 8) | b3);
   //newPacket = true;
@@ -91,9 +93,10 @@ void onReceiveMaster(int len) {
 
 void setup() {
 // INITIALIZE
-  Serial.begin(9600);
+  Serial.begin(115200);
   Wire.begin();
   Wire1.begin(SLAVE_ADDR);
+  analogReadResolution(10);
 
 // STEERING INIT
   pinMode(steeringPin, INPUT);
@@ -199,6 +202,15 @@ void setup() {
 void loop() {
 // TIME
   unsigned long board_timer = millis();
+  if (timeUpdatePending) {
+  noInterrupts();
+  uint32_t t = pendingTime;
+  timeUpdatePending = false;
+  interrupts();
+
+  setTime(t);
+  Teensy3Clock.set(t);
+}
 
   char timeStr[20];
   snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hour(), minute(), second());
