@@ -136,7 +136,7 @@ const int wheelTimeOut = 500; // ms
 
 void setup() {
 // INITIALIZATION
-  Serial.begin(9600);
+  Serial.begin(115200);
   analogReadResolution(10);
 
 // LED INIT
@@ -189,6 +189,7 @@ void setup() {
 // RTC ERROR
   if (timeStatus()!= timeSet) {
     Serial.println("Unable to sync with the RTC");
+    while(1);
   } else {
     Serial.println("RTC has set the system time");
   }
@@ -196,6 +197,7 @@ void setup() {
 // ACCEL ERROR
   if (!accel.begin()) {
     Serial.println("Error: ADXL345 not detected.");
+    while(1);
   }
   accel.setDataRate(ADXL345_DATARATE_200_HZ);
 
