@@ -5,7 +5,6 @@ PCB: Teensy 3 v2
 */
 
 #include <TimeLib.h>
-#include <sdios.h>
 #include <SD.h>
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_ADXL345_U.h>
@@ -25,7 +24,7 @@ unsigned long tempTimer = 0;
 #define OLED_W 128
 #define OLED_H 64
 #define OLED_ADDR 0x3C
-//#define MASTER_ADDR 0x12
+#define SLAVE_ADDR 0x12
 
 Adafruit_SSD1306 display(OLED_W, OLED_H, &Wire, -1);
 
@@ -60,15 +59,16 @@ char fileName[20];
 int runNumber;
 unsigned long flushTimer = 0;
 
-// TEENSY2TEENSY COMMS (DEACTIVATED)
-/*
-volatile int16_t rxAmbC = INT16_MIN;
-volatile int16_t rxObjC = INT16_MIN;
-volatile bool newPacket = false;
-char msg[48] = "Obj: --   Amb: --";
-int16_t textX = 0;
-int16_t textY = 0;
-Function below is Teensy-Teensy
+// TEENSY2TEENSY COMMS
+/* IF TEMP IS ON TEENSY 2, UNCOMMENT.
+//volatile int16_t rxAmbC = INT16_MIN;
+//volatile int16_t rxObjC = INT16_MIN;
+//volatile bool newPacket = false;
+//char msg[48] = "Obj: --   Amb: --";
+//int16_t textX = 0;
+//int16_t textY = 0;
+*/
+
 void onReceiveMaster(int len) {
   if (len < 4) {
     while (Wire1.available()){
@@ -76,23 +76,24 @@ void onReceiveMaster(int len) {
     }
     return;
   }
-  uint8_t b0 = Wire1.read();
-  uint8_t b1 = Wire1.read();
-  uint8_t b2 = Wire1.read();
-  uint8_t b3 = Wire1.read();
-  while (Wire1.available()){
-    Wire1.read();
-  }
-  rxObjC = (int16_t)((b0 << 8) | b1);
-  rxAmbC = (int16_t)((b2 << 8) | b3);
-  newPacket = true;
+  uint32_t t = 0;
+  t |= (uint32_t)Wire1.read() << 24;
+  t |= (uint32_t)Wire1.read() << 16;
+  t |= (uint32_t)Wire1.read() << 8;
+  t |= (uint32_t)Wire1.read();
+
+  setTime(t);
+  Teensy3Clock.set(t);
+  //rxObjC = (int16_t)((b0 << 8) | b1);
+  //rxAmbC = (int16_t)((b2 << 8) | b3);
+  //newPacket = true;
 }
-*/
 
 void setup() {
 // INITIALIZE
   Serial.begin(9600);
   Wire.begin();
+  Wire1.begin(SLAVE_ADDR);
 
 // STEERING INIT
   pinMode(steeringPin, INPUT);
@@ -107,16 +108,20 @@ void setup() {
   pinMode(wheelRpmPinL, INPUT);
   pinMode(wheelRpmPinR, INPUT);
 
+// SCREEN ERROR
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)){
+    Serial.println("SSD1306 init failed");
+    while (1);
+  }
+  
 // SCREEN INIT
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
-  // Uncomment if Teensy-Teensy is needed
-  // Wire1.begin(MASTER_ADDR);
-  // Wire1.onReceive(onReceiveMaster);
 
   display.display();
-
+// Teensy Teensy (SLAVE)
+   Wire1.onReceive(onReceiveMaster);
 // TEMP ERROR
   if (!mlx.begin()) {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
@@ -130,12 +135,6 @@ void setup() {
   } else {
     accel.setRange(ADXL345_RANGE_16_G);
     Serial.println("Adafruit ADXL345 Initialized");
-  }
-
-// SCREEN ERROR
-  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)){
-    Serial.println("SSD1306 init failed");
-    while (1);
   }
 
 // SD ERROR
@@ -180,7 +179,7 @@ void setup() {
   dataFile.print("Y g,");
   dataFile.print("Z g,");
   dataFile.print("FL RPM,");
-  dataFile.println("FR RPM,");
+  dataFile.println("FR RPM");
   //dataFile.print("Eng RPM");
   dataFile.flush();
   //You best keep being your goofy ahh self Mckay
@@ -190,29 +189,27 @@ void setup() {
 //
   flushTimer = millis();
   tempTimer = millis();
-}
-// Light will flash Amber for 1 sec to indicate processes went through.
+  // Light will flash Amber for 1 sec to indicate processes went through.
   Serial.println("Booting!");
       digitalWrite(LED_BUILTIN, HIGH);
       delay(1000);
       digitalWrite(LED_BUILTIN, LOW);
+}
 
 void loop() {
 // TIME
-  unsigned long now = millis();
-  unsigned int seconds = (now / 1000) % 60;
-  unsigned int minutes = (now / 60000) % 60;
-  unsigned int hours   = (now / 3600000) % 60;
+  unsigned long board_timer = millis();
 
-  String timeStr = String(hours) + ":" + String(minutes) + ":" + String(seconds);
+  char timeStr[20];
+  snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hour(), minute(), second());
 
 // STEERING
   int sensorValue = analogRead(steeringPin);
   float angle = sensorValue / 4.413 - 98.0;  // your calibration
 
 // TEMP SCREEN (1hz)
-  if (now - tempTimer >= 1000) {
-    tempTimer = now;
+  if (board_timer - tempTimer >= 1000) {
+    tempTimer = board_timer;
     currObjectTempF = mlx.readObjectTempF();
     currAmbientTempF = mlx.readAmbientTempF();
 
@@ -254,6 +251,10 @@ void loop() {
   }
   lastStateL = currentStateL;
 
+  if (millis() - timerSinceLastToothL > wheelTimeOutL) {
+    wheelRPML = 0;
+  }
+
 
 // RIGHT WHEEL RPM
   bool currentStateR = digitalRead(wheelRpmPinR);
@@ -273,12 +274,15 @@ void loop() {
   }
   lastStateR = currentStateR;
 
+  if (millis() - timerSinceLastToothR > wheelTimeOutR) {
+    wheelRPMR = 0;
+  }
 // FILE WRITE
   if (dataFile) {
   // TIME
     dataFile.print(timeStr);
     dataFile.print(",");
-    dataFile.print(now);
+    dataFile.print(board_timer);
     dataFile.print(",");
 
   // TEMP
@@ -296,7 +300,7 @@ void loop() {
     dataFile.print(",");
     dataFile.print(y_g);
     dataFile.print(",");
-    dataFile.println(z_g);
+    dataFile.print(z_g);
     dataFile.print(",");
 
   // WHEEL RPM
@@ -305,8 +309,8 @@ void loop() {
     dataFile.println(wheelRPMR);
 
 // FLUSH TIMER
-    if (now - flushTimer >= 4000) {
-      flushTimer = now;
+    if (board_timer - flushTimer >= 4000) {
+      flushTimer = board_timer;
       dataFile.flush();
     }
   }
@@ -314,7 +318,7 @@ void loop() {
 // SERIAL DEBUG
   Serial.print(timeStr);
   Serial.print(", ");
-  Serial.print(now);
+  Serial.print(board_timer);
   Serial.print(", ");
   Serial.print(currObjectTempF);
   Serial.print("F, ");
