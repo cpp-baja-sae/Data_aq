@@ -2,6 +2,14 @@
 MCU: Teensy 4.1
 PCB: Teensy 3 v2
 4/9/2026 : Wheel RPM - Jason 
+
+Pin List:
+1 : LED
+  : Temp
+  : Screen
+  : WheelRPM
+  : Gyro
+  : 
 */
 
 #include <TimeLib.h>
@@ -367,32 +375,35 @@ void loop() {
       Serial.print("X g,");
       Serial.print("Y g,");
       Serial.print("Z g,");
+      Serial.print("X rad/s,");
+      Serial.print("Y rad/s,");
+      Serial.print("Z rad/s,");
       Serial.print("FL RPM,");
       Serial.print("FR RPM,");
       Serial.println("runLoops");
       
       Serial.print(timeStr);
-      Serial.print(", ");
+      Serial.print(",");
       Serial.print(board_timer);
-      Serial.print(", ");
+      Serial.print(",");
       Serial.print(currObjectTempF);
-      Serial.print("F, ");
+      Serial.print(",");
       Serial.print(currAmbientTempF);
-      Serial.print("F, ");
-      Serial.print("angle= ");
+      Serial.print(",");
       Serial.print(angle);
-      Serial.print(" ax = ");
+      Serial.print(",");
       Serial.print(x_g);
-      Serial.print(" ay = ");
+      Serial.print(",");
       Serial.print(y_g);
-      Serial.print(" az = ");
+      Serial.print(",");
       Serial.print(z_g);
-      Serial.print(" gyro_x = ");
+      Serial.print(",");
       Serial.print(x_rads);
-      Serial.print(" gyro_y = ");
+      Serial.print(",");
       Serial.print(y_rads);
-      Serial.print(" gyro_z = ");
+      Serial.print(",");
       Serial.print(z_rads);
+      Serial.print(",");
       Serial.print(wheelRPML);
       Serial.print(",");
       Serial.print(wheelRPMR);
