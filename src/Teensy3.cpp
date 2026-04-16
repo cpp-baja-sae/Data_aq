@@ -56,11 +56,8 @@ const int wheelTimeOutR = 500; // ms
 // STEERING CONST
 const int steeringPin = 27;
 
-// ACCEL CONST
-Adafruit_LSM6DSOX sox;
-sensors_event_t accel;
-sensors_event_t gyro;
-sensors_event_t temp;
+// ACCEL/GYRO CONST
+Adafruit_LSM6DSOX gyro;
 
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
@@ -143,13 +140,15 @@ void setup() {
     Serial.println("Adafruit MLX90614 Initialized");
   }
 
-// ACCEL ERROR
-  if (!sox.begin_I2C()) {
-    Serial.println("No LSM6DSOX sensor detected.");
+// ACCEL/GYRO ERROR
+  if (!gyro.begin_I2C()) {
+    Serial.println("No Gyro sensor detected.");
   } else {
-    sox.setAccelRange(LSM6DS_ACCEL_RANGE_16_G);
+    gyro.setAccelRange(LSM6DS_ACCEL_RANGE_16_G);
+    gyro.setGyroRange(LSM6DS_GYRO_RANGE_500_DPS);
+    gyro.setAccelDataRate(LSM6DS_RATE_208_HZ);
+    gyro.setGyroDataRate(LSM6DS_RATE_208_HZ);
     Serial.println("Adafruit LSM6DSOX Initialized");
-  }
 
 // SD ERROR
   if (!SD.begin(chipSelect)) {
@@ -192,6 +191,9 @@ void setup() {
   dataFile.print("X g,");
   dataFile.print("Y g,");
   dataFile.print("Z g,");
+  dataFile.print("X rad/s,");
+  dataFile.print("Y rad/s,");
+  dataFile.print("Z rad/s,");
   dataFile.print("FL RPM,");
   dataFile.println("FR RPM");
   dataFile.flush();
@@ -249,11 +251,19 @@ void loop() {
     display.display();
   }
 
-// ACCEL
-  sox.getEvent(&accel, &gyro, &temp);
-  float x_g = accel.acceleration.x / 9.8;
-  float y_g = accel.acceleration.y / 9.8;
-  float z_g = accel.acceleration.z / 9.8;
+// ACCEL/GYRO
+
+  sensors_event_t accelEvent;
+  sensors_event_t gyroEvent;
+  sensors_event_t tempEvent;
+  
+  gyro.getEvent(&accelEvent, &gyroEvent, &tempEvent);
+  float x_g = accelEvent.acceleration.x / 9.8;
+  float y_g = accelEvent.acceleration.y / 9.8;
+  float z_g = accelEvent.acceleration.z / 9.8;
+  float x_rads = gyroEvent.gyro.x;
+  float y_rads = gyroEvent.gyro.y;
+  float z_rads = gyroEvent.gyro.z;
 
 // LEFT WHEEL RPM
   bool currentStateL = digitalRead(wheelRpmPinL);
@@ -324,6 +334,12 @@ void loop() {
     dataFile.print(",");
     dataFile.print(z_g);
     dataFile.print(",");
+    dataFile.print(x_rads);
+    dataFile.print(",");
+    dataFile.print(y_rads);
+    dataFile.print(",");
+    dataFile.print(z_rads);
+    dataFile.print(",");
 
   // WHEEL RPM
     dataFile.print(wheelRPML);
@@ -336,16 +352,19 @@ void loop() {
       dataFile.flush();
 
 // SERIAL DEBUG (1 SEC)
-      Serial.print("hours:minutes:seconds,");
-      Serial.print("millis,");              // total milliseconds
-      Serial.print("currObjectTempF,");     // object temperature in Fahrenheit
-      Serial.print("currAmbientTempF,");
-      Serial.print("angle,");
-      Serial.print("X g,");
-      Serial.print("Y g,");
-      Serial.print("Z g,");
-      Serial.print("FL RPM,");
-      Serial.print("FR RPM,");
+      dataFile.print("hours:minutes:seconds,");
+      dataFile.print("millis,");              // total milliseconds
+      dataFile.print("currObjectTempF,");     // object temperature in Fahrenheit
+      dataFile.print("currAmbientTempF,");
+      dataFile.print("angle,");
+      dataFile.print("X g,");
+      dataFile.print("Y g,");
+      dataFile.print("Z g,");
+      dataFile.print("X rad/s,");
+      dataFile.print("Y rad/s,");
+      dataFile.print("Z rad/s,");
+      dataFile.print("FL RPM,");
+      dataFile.print("FR RPM");
       Serial.println("runLoops");
 
       Serial.print(timeStr);
@@ -363,6 +382,12 @@ void loop() {
       Serial.print(y_g);
       Serial.print(",");
       Serial.print(z_g);
+      Serial.print(",");
+      Serial.print(x_rads);
+      Serial.print(",");
+      Serial.print(y_rads);
+      Serial.print(",");
+      Serial.print(z_rads);
       Serial.print(",");
       Serial.print(wheelRPML);
       Serial.print(",");
