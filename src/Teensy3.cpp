@@ -58,15 +58,6 @@ char fileName[20];
 int runNumber;
 unsigned long flushTimer = 0;
 
-// TEENSY2TEENSY COMMS
-/* IF TEMP IS ON TEENSY 2, UNCOMMENT.
-//volatile int16_t rxAmbC = INT16_MIN;
-//volatile int16_t rxObjC = INT16_MIN;
-//volatile bool newPacket = false;
-//char msg[48] = "Obj: --   Amb: --";
-//int16_t textX = 0;
-//int16_t textY = 0;
-*/
 volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
 
