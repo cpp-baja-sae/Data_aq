@@ -2,6 +2,14 @@
 MCU: Teensy 4.1
 PCB: Teensy 2 v2
 4/9/2026 - Kareem + Jason
+
+Pin List:
+1 : LED
+21: ERPM
+23: Rear WPM
+26: Front Brake Pres
+27: Rear Brake Pres
+I2C: Accel
 */
 
 #include <Wire.h>
@@ -13,6 +21,7 @@ PCB: Teensy 2 v2
 #include <cmath>
 #include <TimeLib.h>
 
+// TEENSY 3 ADDR
 #define MASTER_ADDR 0x12
 
 // SD CONST
@@ -57,6 +66,7 @@ void sendTime() {
 }
 
 unsigned long lastFlush = 0;
+unsigned int runLoop = 0;
 
 // THROTTLE CONST (DEACTIVATED)
 const int CS_PIN = 10;
@@ -131,7 +141,6 @@ unsigned long timerSinceLastTooth = 0;
 bool lastState = 0;
 double wheelRPM = 0;
 const int wheelTimeOut = 500; // ms
-
 
 
 void setup() {
@@ -247,13 +256,13 @@ void setup() {
       delay(250);
     }
   }
-  // Light will flash Amber for 1 sec to indicate processes went through.
-  Serial.println("Booting!");
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(1000);
-      digitalWrite(LED_BUILTIN, LOW);
 }
+
 void loop() {
+
+// RUN INDICATOR
+  digitalWrite(LED_BUILTIN, HIGH);
+  runLoop++;
 
 // FILE ERROR
   if (!dataFile) {
@@ -265,7 +274,6 @@ void loop() {
       delay(250);
     }
   }
-
 
 // TIME STAMP
   unsigned long board_timer = millis();
@@ -293,7 +301,6 @@ void loop() {
   // float angleDeg = (angleRaw / 1023.0) * 360.0;
   // dataFile.print(angleDeg);
   // dataFile.print(",");
-
 
 // BRAKE PRESSURE
   int rearRaw = analogRead(brakeRearPin);
@@ -373,6 +380,32 @@ void loop() {
   if (board_timer - lastFlush >= 1000) {
     dataFile.flush();
     lastFlush = board_timer;
-  }
 
+// SERIAL DEBUG (1 SEC)
+  Serial.println("time,board_timer,rearPSI,frontPSI,accel_x,accel_y,accel_z,engineRPM,wheelRPM,runLoop");
+
+  Serial.print(timeStr);       
+  Serial.print(",");
+  Serial.print(board_timer);   
+  Serial.print(",");
+  Serial.print(rearPSI_raw);   
+  Serial.print(",");
+  Serial.print(frontPSI_raw);  
+  Serial.print(",");
+  Serial.print(event.acceleration.x / 9.8, 3); 
+  Serial.print(",");
+  Serial.print(event.acceleration.y / 9.8, 3); 
+  Serial.print(",");
+  Serial.print(event.acceleration.z / 9.8, 3); 
+  Serial.print(",");
+  Serial.print(engineRPM);     
+  Serial.print(",");
+  Serial.print(wheelRPM);      
+  Serial.print(",");
+  Serial.println(runLoop);
+
+// RUN LOOP RESET
+  runLoop = 0;
+
+  }
 }

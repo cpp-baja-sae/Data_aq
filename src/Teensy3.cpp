@@ -2,6 +2,14 @@
 MCU: Teensy 4.1
 PCB: Teensy 3 v2
 4/9/2026 : Wheel RPM - Jason 
+
+Pin List:
+1 : LED
+  : Temp
+  : Screen
+  : WheelRPM
+  : Gyro
+  : 
 */
 
 #include <TimeLib.h>
@@ -13,6 +21,7 @@ PCB: Teensy 3 v2
 #include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_LSM6DSOX.h>
 
 // TEMP CONST
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
@@ -48,8 +57,10 @@ const int wheelTimeOutR = 500; // ms
 const int steeringPin = 27;
 
 // ACCEL CONST
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
-sensors_event_t accelEvent;
+Adafruit_LSM6DSOX sox;
+sensors_event_t accel;
+sensors_event_t gyro;
+sensors_event_t temp;
 
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
@@ -70,6 +81,9 @@ unsigned long flushTimer = 0;
 */
 volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
+
+// TIME CONST (RTC HERE)
+int runLoop = 0;
 
 void onReceiveMaster(int len) {
   if (len < 4) {
@@ -101,9 +115,6 @@ void setup() {
 // STEERING INIT
   pinMode(steeringPin, INPUT);
 
-// ERPM INIT
-  //pinMode(rpmPin, INPUT);
-
 // LED INIT
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -133,11 +144,11 @@ void setup() {
   }
 
 // ACCEL ERROR
-  if (!accel.begin()) {
-    Serial.println("No ADXL345 sensor detected.");
+  if (!sox.begin_I2C()) {
+    Serial.println("No LSM6DSOX sensor detected.");
   } else {
-    accel.setRange(ADXL345_RANGE_16_G);
-    Serial.println("Adafruit ADXL345 Initialized");
+    sox.setAccelRange(LSM6DS_ACCEL_RANGE_16_G);
+    Serial.println("Adafruit LSM6DSOX Initialized");
   }
 
 // SD ERROR
@@ -183,7 +194,6 @@ void setup() {
   dataFile.print("Z g,");
   dataFile.print("FL RPM,");
   dataFile.println("FR RPM");
-  //dataFile.print("Eng RPM");
   dataFile.flush();
   //You best keep being your goofy ahh self Mckay
   Serial.print("Logging to file: ");
@@ -192,14 +202,14 @@ void setup() {
 //
   flushTimer = millis();
   tempTimer = millis();
-  // Light will flash Amber for 1 sec to indicate processes went through.
-  Serial.println("Booting!");
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(1000);
-      digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
+
+// RUN INDICATOR
+  digitalWrite(LED_BUILTIN, HIGH);
+  runLoop++;
+
 // TIME
   unsigned long board_timer = millis();
   if (timeUpdatePending) {
@@ -240,10 +250,10 @@ void loop() {
   }
 
 // ACCEL
-  accel.getEvent(&accelEvent);
-  float x_g = accelEvent.acceleration.x / 9.8;
-  float y_g = accelEvent.acceleration.y / 9.8;
-  float z_g = accelEvent.acceleration.z / 9.8;
+  sox.getEvent(&accel, &gyro, &temp);
+  float x_g = accel.acceleration.x / 9.8;
+  float y_g = accel.acceleration.y / 9.8;
+  float z_g = accel.acceleration.z / 9.8;
 
 // LEFT WHEEL RPM
   bool currentStateL = digitalRead(wheelRpmPinL);
@@ -321,23 +331,46 @@ void loop() {
     dataFile.println(wheelRPMR);
 
 // FLUSH TIMER
-    if (board_timer - flushTimer >= 4000) {
+    if (board_timer - flushTimer >= 1000) {
       flushTimer = board_timer;
       dataFile.flush();
+
+// SERIAL DEBUG (1 SEC)
+      Serial.print("hours:minutes:seconds,");
+      Serial.print("millis,");              // total milliseconds
+      Serial.print("currObjectTempF,");     // object temperature in Fahrenheit
+      Serial.print("currAmbientTempF,");
+      Serial.print("angle,");
+      Serial.print("X g,");
+      Serial.print("Y g,");
+      Serial.print("Z g,");
+      Serial.print("FL RPM,");
+      Serial.print("FR RPM,");
+      Serial.println("runLoops");
+
+      Serial.print(timeStr);
+      Serial.print(",");
+      Serial.print(board_timer);
+      Serial.print(",");
+      Serial.print(currObjectTempF);
+      Serial.print(",");
+      Serial.print(currAmbientTempF);
+      Serial.print(",");
+      Serial.print(angle);
+      Serial.print(",");
+      Serial.print(x_g);
+      Serial.print(",");
+      Serial.print(y_g);
+      Serial.print(",");
+      Serial.print(z_g);
+      Serial.print(",");
+      Serial.print(wheelRPML);
+      Serial.print(",");
+      Serial.print(wheelRPMR);
+      Serial.print(",");
+      Serial.println(runLoop);
+
+      runLoop = 0;
     }
   }
-
-// SERIAL DEBUG
-  Serial.print(timeStr);
-  Serial.print(", ");
-  Serial.print(board_timer);
-  Serial.print(", ");
-  Serial.print(currObjectTempF);
-  Serial.print("F, ");
-  Serial.print(currAmbientTempF);
-  Serial.print("F, ");
-  Serial.print("angle=");
-  Serial.println(angle);
-  //Serial.print(", RPM=");
-  //Serial.println(engineRPM);
 }
