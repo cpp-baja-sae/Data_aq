@@ -2,6 +2,14 @@
 MCU: Teensy 4.1
 PCB: Teensy 3 v2
 4/9/2026 : Wheel RPM - Jason 
+
+Pin List:
+1 : LED
+  : Temp
+  : Screen
+  : WheelRPM
+  : Gyro
+  : 
 */
 
 #include <TimeLib.h>
@@ -24,7 +32,7 @@ unsigned long tempTimer = 0;
 #define OLED_W 128
 #define OLED_H 64
 #define OLED_ADDR 0x3C
-#define SLAVE_ADDR 0x12
+// #define SLAVE_ADDR 0x12
 
 Adafruit_SSD1306 display(OLED_W, OLED_H, &Wire, -1);
 
@@ -62,9 +70,30 @@ volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
 
 // TIME CONST (RTC HERE)
-int runLoop = 0;
+// TIME CONST
+#define TIME_HEADER  "T"   // Header tag for serial time sync message
+unsigned long lastTimeSync = 0;
 
-void onReceiveMaster(int len) {
+unsigned long processSyncMessage() {
+  unsigned long pctime = 0L;
+  const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013 
+
+  if(Serial.find(TIME_HEADER)) {
+     pctime = Serial.parseInt();
+     if( pctime < DEFAULT_TIME) { // check the value is a valid time (greater than Jan 1 2013)
+       pctime = 0L; // return 0 to indicate that the time is not valid
+     }
+  }
+  return pctime;
+}
+
+time_t getTeensyTime() {
+    return Teensy3Clock.get();
+}
+
+int runLoop = 0;
+// TEENSY-TEENSY
+/*void onReceiveMaster(int len) {
   if (len < 4) {
     while (Wire1.available()){
      Wire1.read();
@@ -83,12 +112,12 @@ void onReceiveMaster(int len) {
   //rxAmbC = (int16_t)((b2 << 8) | b3);
   //newPacket = true;
 }
-
+*/
 void setup() {
 // INITIALIZE
   Serial.begin(115200);
   Wire.begin();
-  Wire1.begin(SLAVE_ADDR);
+  //Wire1.begin(SLAVE_ADDR); TEENSY - TEENSY
   analogReadResolution(10);
 
 // STEERING INIT
@@ -114,7 +143,7 @@ void setup() {
 
   display.display();
 // Teensy Teensy (SLAVE)
-   Wire1.onReceive(onReceiveMaster);
+   //Wire1.onReceive(onReceiveMaster);
 // TEMP ERROR
   if (!mlx.begin()) {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
@@ -143,6 +172,18 @@ void setup() {
       delay(250);
     }
   }
+// RTC INIT
+  setSyncProvider(getTeensyTime); // Sets Time.lib to use RTC
+  // If not set, sync time
+  if (timeStatus()!= timeSet) {
+    if (Serial.available()) {
+      time_t t = processSyncMessage();
+      if (t != 0) {
+        Teensy3Clock.set(t); // set the RTC
+        setTime(t);
+      }
+    }
+  }
 
 // RUN # FROM EEPROM
   runNumber = EEPROM.read(runNumberAddress);
@@ -150,7 +191,8 @@ void setup() {
   //Good luck on the car, dont cry too much Luke.
   EEPROM.write(runNumberAddress, runNumber);
 
-  sprintf(fileName, "SEPT28_%d.csv", runNumber);
+  snprintf(fileName, sizeOf(fileName),  "%02d_%02d.csv", month(), day());
+
   dataFile = SD.open(fileName, FILE_WRITE);
 
 // FILE ERROR
@@ -194,18 +236,9 @@ void loop() {
 // RUN INDICATOR
   digitalWrite(LED_BUILTIN, HIGH);
   runLoop++;
-// TIME
+// TIME STAMP
   unsigned long board_timer = millis();
-  if (timeUpdatePending) {
-  noInterrupts();
-  uint32_t t = pendingTime;
-  timeUpdatePending = false;
-  interrupts();
-
-  setTime(t);
-  Teensy3Clock.set(t);
-}
-
+// THE ABOVE IS SPECIFICALLY FOR SD WRITING.
   char timeStr[20];
   snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hour(), minute(), second());
 
@@ -230,6 +263,20 @@ void loop() {
     display.print("Amb: ");
     display.print(currAmbientTempF, 1);
     display.print("F");
+
+    // Date and Time + File Name in Bot Right (GPT'D, needs to be tested for positioning)
+    char currentDateTime[25];
+    snprintf(currentDateTime, sizeOf(currentDateTime),  "%02d/%02d %02d:%02d:%02d", 
+    month(), day(), hour(), minute(), second());
+
+    int dtWidth = strlen(dateTimeStr) * 6;
+    display.setCursor(OLED_W - dtWidth - 2, OLED_H - 16);
+    display.print(dateTimeStr);
+
+    int fileWidth = strlen(fileName) * 6;
+    display.setCursor(OLED_W - fileWidth - 2, OLED_H - 8);
+    display.print(fileName);
+    
     display.display();
   }
 
@@ -343,32 +390,35 @@ void loop() {
       Serial.print("X g,");
       Serial.print("Y g,");
       Serial.print("Z g,");
+      Serial.print("X rad/s,");
+      Serial.print("Y rad/s,");
+      Serial.print("Z rad/s,");
       Serial.print("FL RPM,");
       Serial.print("FR RPM,");
       Serial.println("runLoops");
       
       Serial.print(timeStr);
-      Serial.print(", ");
+      Serial.print(",");
       Serial.print(board_timer);
-      Serial.print(", ");
+      Serial.print(",");
       Serial.print(currObjectTempF);
-      Serial.print("F, ");
+      Serial.print(",");
       Serial.print(currAmbientTempF);
-      Serial.print("F, ");
-      Serial.print("angle= ");
+      Serial.print(",");
       Serial.print(angle);
-      Serial.print(" ax = ");
+      Serial.print(",");
       Serial.print(x_g);
-      Serial.print(" ay = ");
+      Serial.print(",");
       Serial.print(y_g);
-      Serial.print(" az = ");
+      Serial.print(",");
       Serial.print(z_g);
-      Serial.print(" gyro_x = ");
+      Serial.print(",");
       Serial.print(x_rads);
-      Serial.print(" gyro_y = ");
+      Serial.print(",");
       Serial.print(y_rads);
-      Serial.print(" gyro_z = ");
+      Serial.print(",");
       Serial.print(z_rads);
+      Serial.print(",");
       Serial.print(wheelRPML);
       Serial.print(",");
       Serial.print(wheelRPMR);
