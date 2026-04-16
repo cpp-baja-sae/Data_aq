@@ -67,15 +67,6 @@ char fileName[20];
 int runNumber;
 unsigned long flushTimer = 0;
 
-// TEENSY2TEENSY COMMS
-/* IF TEMP IS ON TEENSY 2, UNCOMMENT.
-//volatile int16_t rxAmbC = INT16_MIN;
-//volatile int16_t rxObjC = INT16_MIN;
-//volatile bool newPacket = false;
-//char msg[48] = "Obj: --   Amb: --";
-//int16_t textX = 0;
-//int16_t textY = 0;
-*/
 volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
 
@@ -140,7 +131,7 @@ void setup() {
     Serial.println("Adafruit MLX90614 Initialized");
   }
 
-// ACCEL/GYRO ERROR
+// ACCEL/GYRO ERROR - Note: The object 'gyro' is declaration of our ACCEL/GYRO sensor don't get confused
   if (!gyro.begin_I2C()) {
     Serial.println("No Gyro sensor detected.");
   } else {
