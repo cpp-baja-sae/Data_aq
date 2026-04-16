@@ -149,6 +149,7 @@ void setup() {
     gyro.setAccelDataRate(LSM6DS_RATE_208_HZ);
     gyro.setGyroDataRate(LSM6DS_RATE_208_HZ);
     Serial.println("Adafruit LSM6DSOX Initialized");
+  }
 
 // SD ERROR
   if (!SD.begin(chipSelect)) {
