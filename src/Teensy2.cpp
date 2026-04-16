@@ -13,7 +13,7 @@ PCB: Teensy 2 v2
 #include <cmath>
 #include <TimeLib.h>
 
-#define MASTER_ADDR 0x12
+// #define MASTER_ADDR 0x12
 
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
@@ -44,8 +44,8 @@ unsigned long processSyncMessage() {
 time_t getTeensyTime() {
     return Teensy3Clock.get();
 }
-
-void sendTime() {
+// TEENSY-TEENSY
+/*void sendTime() {
   uint32_t t = now(); // get current unix timestamp (4 bytes)
   
   Wire1.beginTransmission(MASTER_ADDR);
@@ -55,7 +55,7 @@ void sendTime() {
   Wire1.write((t)       & 0xFF); // byte 0
   Wire1.endTransmission();
 }
-
+*/
 unsigned long lastFlush = 0;
 unsigned int runLoop = 0;
 
@@ -175,7 +175,7 @@ void setup() {
 
 // RTC INIT
   setSyncProvider(getTeensyTime); // Sets Time.lib to use RTC
-  Wire1.begin();
+  //Wire1.begin();
   // If not set, sync time
   if (timeStatus()!= timeSet) {
     if (Serial.available()) {
@@ -276,11 +276,6 @@ void loop() {
   dataFile.print(",");
   dataFile.print(board_timer);
   dataFile.print(",");
-  
-  if (board_timer - lastTimeSync >= 1000) {
-    lastTimeSync = board_timer;
-    sendTime();
-  }
 
 // THROTTLE (DISABLED L31)
   // digitalWrite(CS_PIN, LOW);
