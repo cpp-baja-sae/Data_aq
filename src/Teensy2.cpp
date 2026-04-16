@@ -57,6 +57,7 @@ void sendTime() {
 }
 
 unsigned long lastFlush = 0;
+unsigned int runLoop = 0;
 
 // THROTTLE CONST (DEACTIVATED)
 const int CS_PIN = 10;
@@ -247,14 +248,12 @@ void setup() {
       delay(250);
     }
   }
-  // Light will flash Amber for 1 sec to indicate processes went through.
-  Serial.println("Booting!");
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(1000);
-      digitalWrite(LED_BUILTIN, LOW);
 }
 void loop() {
-
+  
+// RUN INDICATOR 
+  digitalWrite(LED_BUILTIN, HIGH);
+  runLoop++;
 // FILE ERROR
   if (!dataFile) {
     Serial.println("Error: dataFile invalid.");
@@ -311,11 +310,15 @@ void loop() {
   sensors_event_t event;
   accel.getEvent(&event);
 
-  dataFile.print(event.acceleration.x / 9.8);
+  float x_g = (event.acceleration.x / 9.8);
+  float y_g = (event.acceleration.y / 9.8);
+  float z_g = (event.acceleration.z / 9.8);
+
+  dataFile.print(x_g);
   dataFile.print(",");
-  dataFile.print(event.acceleration.y / 9.8);
+  dataFile.print(y_g);
   dataFile.print(",");
-  dataFile.print(event.acceleration.z / 9.8);
+  dataFile.print(z_g);
   dataFile.print(",");
 
 // ENGINE RPM
@@ -373,6 +376,33 @@ void loop() {
   if (board_timer - lastFlush >= 1000) {
     dataFile.flush();
     lastFlush = board_timer;
+    
+    Serial.println("time,board_timer,rearPSI,frontPSI,accel_x,accel_y,accel_z,engineRPM,wheelRPM,runLoop");
+
+    Serial.print(timeStr);       
+    Serial.print(",");
+    Serial.print(board_timer);   
+    Serial.print(",");
+    Serial.print(rearPSI_raw);   
+    Serial.print(",");
+    Serial.print(frontPSI_raw);  
+    Serial.print(",");
+    Serial.print(x_g, 3); 
+    Serial.print(",");
+    Serial.print(y_g / 9.8, 3); 
+    Serial.print(",");
+    Serial.print(z_g / 9.8, 3); 
+    Serial.print(",");
+    Serial.print(engineRPM);     
+    Serial.print(",");
+    Serial.print(wheelRPM);      
+    Serial.print(",");
+    Serial.println(runLoop);
+
+// RUN LOOP RESET
+  runLoop = 0;
+
+    
   }
 
 }
