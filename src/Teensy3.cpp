@@ -15,7 +15,7 @@ Pin List:
 #include <TimeLib.h>
 #include <SD.h>
 #include <Adafruit_MLX90614.h>
-#include <Adafruit_ADXL345_U.h>
+#include <Adafruit_LSM6DSOX.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <EEPROM.h>
