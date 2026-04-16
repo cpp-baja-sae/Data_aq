@@ -2,6 +2,14 @@
 MCU: Teensy 4.1
 PCB: Teensy 2 v2
 4/9/2026 - Kareem + Jason
+
+Pin List:
+1 : LED
+21: ERPM
+23: Rear WPM
+26: Front Brake Pres
+27: Rear Brake Pres
+I2C: Accel
 */
 
 #include <Wire.h>
@@ -253,6 +261,7 @@ void loop() {
 // RUN INDICATOR 
   digitalWrite(LED_BUILTIN, HIGH);
   runLoop++;
+  
 // FILE ERROR
   if (!dataFile) {
     Serial.println("Error: dataFile invalid.");
@@ -366,11 +375,12 @@ void loop() {
 
   dataFile.println(wheelRPM);
   
-// FLUSH EVERY 1 SEC
+// FLUSH (1Hz)
   if (board_timer - lastFlush >= 1000) {
     dataFile.flush();
     lastFlush = board_timer;
-    
+
+// SERIAL DEBUG (1Hz)
     Serial.println("time,board_timer,rearPSI,frontPSI,accel_x,accel_y,accel_z,engineRPM,wheelRPM,runLoop");
 
     Serial.print(timeStr);       
@@ -396,7 +406,6 @@ void loop() {
 // RUN LOOP RESET
   runLoop = 0;
 
-    
   }
 
 }
