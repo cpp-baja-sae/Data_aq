@@ -70,6 +70,9 @@ unsigned long flushTimer = 0;
 volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
 
+// TIME CONST (RTC HERE)
+int runLoop = 0;
+
 void onReceiveMaster(int len) {
   if (len < 4) {
     while (Wire1.available()){
@@ -100,9 +103,6 @@ void setup() {
 // STEERING INIT
   pinMode(steeringPin, INPUT);
 
-// ERPM INIT
-  //pinMode(rpmPin, INPUT);
-
 // LED INIT
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -131,7 +131,7 @@ void setup() {
     Serial.println("Adafruit MLX90614 Initialized");
   }
 
-// ACCEL/GYRO ERROR
+// ACCEL/GYRO ERROR - Note: The object 'gyro' is declaration of our ACCEL/GYRO sensor don't get confused
   if (!gyro.begin_I2C()) {
     Serial.println("No Gyro sensor detected.");
   } else {
@@ -188,7 +188,6 @@ void setup() {
   dataFile.print("Z rad/s,");
   dataFile.print("FL RPM,");
   dataFile.println("FR RPM");
-  //dataFile.print("Eng RPM");
   dataFile.flush();
   //You best keep being your goofy ahh self Mckay
   Serial.print("Logging to file: ");
@@ -197,14 +196,13 @@ void setup() {
 //
   flushTimer = millis();
   tempTimer = millis();
-  // Light will flash Amber for 1 sec to indicate processes went through.
-  Serial.println("Booting!");
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(1000);
-      digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
+
+// RUN INDICATOR
+  digitalWrite(LED_BUILTIN, HIGH);
+  runLoop++;
 // TIME
   unsigned long board_timer = millis();
   if (timeUpdatePending) {
@@ -340,9 +338,51 @@ void loop() {
     dataFile.println(wheelRPMR);
 
 // FLUSH TIMER
-    if (board_timer - flushTimer >= 4000) {
+    if (board_timer - flushTimer >= 1000) {
       flushTimer = board_timer;
       dataFile.flush();
+
+      //SERIAL DEBUG (1 SEC)
+
+      Serial.print("hours:minutes:seconds,");
+      Serial.print("millis,");              // total milliseconds
+      Serial.print("currObjectTempF,");     // object temperature in Fahrenheit
+      Serial.print("currAmbientTempF,");
+      Serial.print("angle,");
+      Serial.print("X g,");
+      Serial.print("Y g,");
+      Serial.print("Z g,");
+      Serial.print("FL RPM,");
+      Serial.print("FR RPM,");
+      Serial.println("runLoops");
+      
+      Serial.print(timeStr);
+      Serial.print(", ");
+      Serial.print(board_timer);
+      Serial.print(", ");
+      Serial.print(currObjectTempF);
+      Serial.print("F, ");
+      Serial.print(currAmbientTempF);
+      Serial.print("F, ");
+      Serial.print("angle= ");
+      Serial.print(angle);
+      Serial.print(" ax = ");
+      Serial.print(x_g);
+      Serial.print(" ay = ");
+      Serial.print(y_g);
+      Serial.print(" az = ");
+      Serial.print(z_g);
+      Serial.print(" gyro_x = ");
+      Serial.print(x_rads);
+      Serial.print(" gyro_y = ");
+      Serial.print(y_rads);
+      Serial.print(" gyro_z = ");
+      Serial.print(z_rads);
+      Serial.print(wheelRPML);
+      Serial.print(",");
+      Serial.print(wheelRPMR);
+      Serial.print(",");
+      Serial.println(runLoop);
     }
   }
 
@@ -371,7 +411,5 @@ if (board_timer - debug_timer < 1000){
   Serial.print(y_rads);
   Serial.print(" gyro_z = ");
   Serial.println(z_rads);
-  //Serial.print(", RPM=");
-  //Serial.println(engineRPM);
   }
 }
