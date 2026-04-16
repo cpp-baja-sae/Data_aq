@@ -24,7 +24,7 @@ unsigned long tempTimer = 0;
 #define OLED_W 128
 #define OLED_H 64
 #define OLED_ADDR 0x3C
-#define SLAVE_ADDR 0x12
+// #define SLAVE_ADDR 0x12
 
 Adafruit_SSD1306 display(OLED_W, OLED_H, &Wire, -1);
 
@@ -62,9 +62,30 @@ volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
 
 // TIME CONST (RTC HERE)
-int runLoop = 0;
+// TIME CONST
+#define TIME_HEADER  "T"   // Header tag for serial time sync message
+unsigned long lastTimeSync = 0;
 
-void onReceiveMaster(int len) {
+unsigned long processSyncMessage() {
+  unsigned long pctime = 0L;
+  const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013 
+
+  if(Serial.find(TIME_HEADER)) {
+     pctime = Serial.parseInt();
+     if( pctime < DEFAULT_TIME) { // check the value is a valid time (greater than Jan 1 2013)
+       pctime = 0L; // return 0 to indicate that the time is not valid
+     }
+  }
+  return pctime;
+}
+
+time_t getTeensyTime() {
+    return Teensy3Clock.get();
+}
+
+int runLoop = 0;
+// TEENSY-TEENSY
+/*void onReceiveMaster(int len) {
   if (len < 4) {
     while (Wire1.available()){
      Wire1.read();
@@ -83,12 +104,12 @@ void onReceiveMaster(int len) {
   //rxAmbC = (int16_t)((b2 << 8) | b3);
   //newPacket = true;
 }
-
+*/
 void setup() {
 // INITIALIZE
   Serial.begin(115200);
   Wire.begin();
-  Wire1.begin(SLAVE_ADDR);
+  //Wire1.begin(SLAVE_ADDR); TEENSY - TEENSY
   analogReadResolution(10);
 
 // STEERING INIT
@@ -114,7 +135,7 @@ void setup() {
 
   display.display();
 // Teensy Teensy (SLAVE)
-   Wire1.onReceive(onReceiveMaster);
+   //Wire1.onReceive(onReceiveMaster);
 // TEMP ERROR
   if (!mlx.begin()) {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
@@ -141,6 +162,18 @@ void setup() {
       delay(250);
       digitalWrite(LED_BUILTIN, LOW);
       delay(250);
+    }
+  }
+// RTC INIT
+  setSyncProvider(getTeensyTime); // Sets Time.lib to use RTC
+  // If not set, sync time
+  if (timeStatus()!= timeSet) {
+    if (Serial.available()) {
+      time_t t = processSyncMessage();
+      if (t != 0) {
+        Teensy3Clock.set(t); // set the RTC
+        setTime(t);
+      }
     }
   }
 
@@ -194,18 +227,9 @@ void loop() {
 // RUN INDICATOR
   digitalWrite(LED_BUILTIN, HIGH);
   runLoop++;
-// TIME
+// TIME STAMP
   unsigned long board_timer = millis();
-  if (timeUpdatePending) {
-  noInterrupts();
-  uint32_t t = pendingTime;
-  timeUpdatePending = false;
-  interrupts();
-
-  setTime(t);
-  Teensy3Clock.set(t);
-}
-
+// THE ABOVE IS SPECIFICALLY FOR SD WRITING.
   char timeStr[20];
   snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hour(), minute(), second());
 
