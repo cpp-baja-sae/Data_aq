@@ -375,32 +375,7 @@ void loop() {
       Serial.print(",");
       Serial.println(runLoop);
     }
+    runLoop = 0;
   }
-
-// SERIAL DEBUG
-static uint32_t debug_timer = 0;
-if (board_timer - debug_timer < 1000){
-  Serial.print(timeStr);
-  Serial.print(", ");
-  Serial.print(board_timer);
-  Serial.print(", ");
-  Serial.print(currObjectTempF);
-  Serial.print("F, ");
-  Serial.print(currAmbientTempF);
-  Serial.print("F, ");
-  Serial.print("angle= ");
-  Serial.print(angle);
-  Serial.print(" ax = ");
-  Serial.print(x_g);
-  Serial.print(" ay = ");
-  Serial.print(y_g);
-  Serial.print(" az = ");
-  Serial.print(z_g);
-  Serial.print(" gyro_x = ");
-  Serial.print(x_rads);
-  Serial.print(" gyro_y = ");
-  Serial.print(y_rads);
-  Serial.print(" gyro_z = ");
-  Serial.println(z_rads);
-  }
+ 
 }
