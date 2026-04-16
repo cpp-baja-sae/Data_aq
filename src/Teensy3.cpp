@@ -191,7 +191,9 @@ void setup() {
   //Good luck on the car, dont cry too much Luke.
   EEPROM.write(runNumberAddress, runNumber);
 
-  sprintf(fileName, "SEPT28_%d.csv", runNumber);
+  char fileName[16];
+  snprintf(fileName, sizeOf(fileName),  "%02d_%02d.csv", month(), day());
+
   dataFile = SD.open(fileName, FILE_WRITE);
 
 // FILE ERROR
@@ -262,6 +264,20 @@ void loop() {
     display.print("Amb: ");
     display.print(currAmbientTempF, 1);
     display.print("F");
+
+    // Date and Time + File Name in Bot Right (GPT'D, needs to be tested for positioning)
+    char currentDateTime[25];
+    snprintf(currentDateTime, sizeOf(currentDateTime),  "%02d/%02d %02d:%02d:%02d", 
+    month(), day(), hour(), minute(), second());
+
+    int dtWidth = strlen(dateTimeStr) * 6;
+    display.setCursor(OLED_W - dtWidth - 2, OLED_H - 16);
+    display.print(dateTimeStr);
+
+    int fileWidth = strlen(fileName) * 6;
+    display.setCursor(OLED_W - fileWidth - 2, OLED_H - 8);
+    display.print(fileName);
+    
     display.display();
   }
 
