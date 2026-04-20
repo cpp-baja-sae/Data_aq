@@ -196,7 +196,26 @@ void setup() {
   dataFile = SD.open(fileName, FILE_WRITE);
 
 // FILE ERROR
-  if (!dataFile) {
+  if (dataFile) {
+    dataFile.print("hours:minutes:seconds,");
+    dataFile.print("millis,");              // total milliseconds
+    dataFile.print("currObjectTempF,");     // object temperature in Fahrenheit
+    dataFile.print("currAmbientTempF,");
+    dataFile.print("angle,");
+    dataFile.print("X g,");
+    dataFile.print("Y g,");
+    dataFile.print("Z g,");
+    dataFile.print("X rad/s,");
+    dataFile.print("Y rad/s,");
+    dataFile.print("Z rad/s,");
+    dataFile.print("FL RPM,");
+    dataFile.println("FR RPM");
+    dataFile.flush();
+  //You best keep being your goofy ahh self Mckay
+    Serial.print("Logging to file: ");
+    Serial.println(fileName);
+  }
+  else{
     Serial.println("Error: Could not open the file for writing.");
     while (1) {
       digitalWrite(LED_BUILTIN, HIGH);
@@ -205,26 +224,6 @@ void setup() {
       delay(250);
     }
   }
-
-
-// FILE HEADER
-  dataFile.print("hours:minutes:seconds,");
-  dataFile.print("millis,");              // total milliseconds
-  dataFile.print("currObjectTempF,");     // object temperature in Fahrenheit
-  dataFile.print("currAmbientTempF,");
-  dataFile.print("angle,");
-  dataFile.print("X g,");
-  dataFile.print("Y g,");
-  dataFile.print("Z g,");
-  dataFile.print("X rad/s,");
-  dataFile.print("Y rad/s,");
-  dataFile.print("Z rad/s,");
-  dataFile.print("FL RPM,");
-  dataFile.println("FR RPM");
-  dataFile.flush();
-  //You best keep being your goofy ahh self Mckay
-  Serial.print("Logging to file: ");
-  Serial.println(fileName);
 
 //
   flushTimer = millis();
