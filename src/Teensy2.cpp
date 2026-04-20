@@ -132,7 +132,7 @@ void onRpmPulseRise() {
   // Always update the time of the most recent pulse
   lastPulseTime_us = now_us;
 }
-
+/* Wheel RPM Disabled for Now
 // WHEEL RPM CONST
 const int wheelRpmPin = 23;
 const int TEETH = 14;
@@ -140,7 +140,7 @@ unsigned long timerSinceLastTooth = 0;
 bool lastState = 0;
 double wheelRPM = 0;
 const int wheelTimeOut = 500; // ms
-
+*/
 
 
 void setup() {
@@ -162,10 +162,10 @@ void setup() {
   pinMode(engineRpmPin, INPUT);
   // Attach interrupt on rising edge of the pulse signal.
   attachInterrupt(digitalPinToInterrupt(engineRpmPin), onRpmPulseRise, RISING);
-
+/*
 // Wheel RPM INIT
   pinMode(wheelRpmPin, INPUT);
-
+*/
 // BRAKES INIT
   pinMode(brakeRearPin, INPUT);
   pinMode(brakeFrontPin, INPUT);
@@ -236,11 +236,11 @@ void setup() {
     dataFile.print("Accel X g,");
     dataFile.print("Accel Y g,");
     dataFile.print("Accel Z g,");
-    dataFile.print("Eng RPM,");
-
+    dataFile.println("Eng RPM,");
+/*
   // WHEEL RPM
     dataFile.println("Rear RPM");
-
+*/
 // SD ERROR
     Serial.print("Logging to file: ");
     Serial.println(fileName);
@@ -350,7 +350,7 @@ void loop() {
 
   dataFile.print(engineRPM);
   dataFile.print(",");
-
+/*
 // WHEEL RPM
   bool currentState = digitalRead(wheelRpmPin);
   if (currentState != lastState && currentState == HIGH) {
@@ -374,7 +374,7 @@ void loop() {
   }
 
   dataFile.println(wheelRPM);
-  
+  */
 // FLUSH (1Hz)
   if (board_timer - lastFlush >= 1000) {
     dataFile.flush();
@@ -399,8 +399,8 @@ void loop() {
     Serial.print(",");
     Serial.print(engineRPM);     
     Serial.print(",");
-    Serial.print(wheelRPM);      
-    Serial.print(",");
+  /*  Serial.print(wheelRPM);      
+    Serial.print(","); */
     Serial.println(runLoop);
 
 // RUN LOOP RESET
