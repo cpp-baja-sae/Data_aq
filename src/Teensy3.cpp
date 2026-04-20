@@ -35,7 +35,7 @@ unsigned long tempTimer = 0;
 // #define SLAVE_ADDR 0x12
 
 Adafruit_SSD1306 display(OLED_W, OLED_H, &Wire, -1);
-
+/* Wheel RPM Commented Out For Now
 // WHEEL RPM LEFT CONST
 const int wheelRpmPinL = 20;
 const int TEETHL = 14;
@@ -51,7 +51,7 @@ unsigned long timerSinceLastToothR = 0;
 bool lastStateR = 0;
 double wheelRPMR = 0;
 const int wheelTimeOutR = 500; // ms
-
+*/
 // STEERING CONST
 const int steeringPin = 27;
 
@@ -125,11 +125,11 @@ void setup() {
 
 // LED INIT
   pinMode(LED_BUILTIN, OUTPUT);
-
+/*
 // WRPM INIT
   pinMode(wheelRpmPinL, INPUT);
   pinMode(wheelRpmPinR, INPUT);
-
+*/
 // SCREEN ERROR
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)){
     Serial.println("SSD1306 init failed");
@@ -293,7 +293,7 @@ void loop() {
   float x_rads = gyroEvent.gyro.x;
   float y_rads = gyroEvent.gyro.y;
   float z_rads = gyroEvent.gyro.z;
-
+/*
 // LEFT WHEEL RPM
   bool currentStateL = digitalRead(wheelRpmPinL);
   if (currentStateL != lastStateL && currentStateL == HIGH) {
@@ -338,6 +338,7 @@ void loop() {
   if (millis() - timerSinceLastToothR > wheelTimeOutR) {
     wheelRPMR = 0;
   }
+  */
 // FILE WRITE
   if (dataFile) {
   // TIME
@@ -367,13 +368,13 @@ void loop() {
     dataFile.print(",");
     dataFile.print(y_rads);
     dataFile.print(",");
-    dataFile.print(z_rads);
-    dataFile.print(",");
-
+    dataFile.println(z_rads);
+    
+/*
   // WHEEL RPM
     dataFile.print(wheelRPML);
     dataFile.print(",");
-    dataFile.println(wheelRPMR);
+    dataFile.println(wheelRPMR); */
 
 // FLUSH TIMER
     if (board_timer - flushTimer >= 1000) {
@@ -393,8 +394,8 @@ void loop() {
       Serial.print("X rad/s,");
       Serial.print("Y rad/s,");
       Serial.print("Z rad/s,");
-      Serial.print("FL RPM,");
-      Serial.print("FR RPM,");
+ /*   Serial.print("FL RPM,"); 
+      Serial.print("FR RPM,"); */
       Serial.println("runLoops");
       
       Serial.print(timeStr);
@@ -418,10 +419,10 @@ void loop() {
       Serial.print(y_rads);
       Serial.print(",");
       Serial.print(z_rads);
-      Serial.print(",");
+     /* Serial.print(",");
       Serial.print(wheelRPML);
       Serial.print(",");
-      Serial.print(wheelRPMR);
+      Serial.print(wheelRPMR); */
       Serial.print(",");
       Serial.println(runLoop);
     }
