@@ -191,7 +191,7 @@ void setup() {
   //Good luck on the car, dont cry too much Luke.
   EEPROM.write(runNumberAddress, runNumber);
 
-  snprintf(fileName, sizeOf(fileName),  "%02d_%02d.csv", month(), day());
+  snprintf(fileName, sizeof(fileName),  "%02d_%02d.csv", month(), day());
 
   dataFile = SD.open(fileName, FILE_WRITE);
 
@@ -265,7 +265,7 @@ void loop() {
 
     // Date and Time + File Name in Bot Right (GPT'D, needs to be tested for positioning)
     char currentDateTime[25];
-    snprintf(currentDateTime, sizeOf(currentDateTime),  "%02d/%02d %02d:%02d:%02d", 
+    snprintf(currentDateTime, sizeof(currentDateTime),  "%02d/%02d %02d:%02d:%02d", 
     month(), day(), hour(), minute(), second());
 
     int dtWidth = strlen(dateTimeStr) * 6;
