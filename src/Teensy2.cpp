@@ -280,11 +280,6 @@ void loop() {
   char timeStr[20];
   snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hour(), minute(), second());
 
-  dataFile.print(timeStr);
-  dataFile.print(",");
-  dataFile.print(board_timer);
-  dataFile.print(",");
-
 // THROTTLE (DISABLED L31)
   // digitalWrite(CS_PIN, LOW);
   // SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE1));
@@ -304,11 +299,6 @@ void loop() {
   double rearPSI_raw = convertToPSI(rearRaw);
   double frontPSI_raw = convertToPSI(frontRaw);
  
-  dataFile.print(frontPSI_raw);
-  dataFile.print(",");
-  dataFile.print(rearPSI_raw);
-  dataFile.print(",");
-
 // ACCELEROMETER
   sensors_event_t event;
   accel.getEvent(&event);
@@ -316,13 +306,6 @@ void loop() {
   float x_g = (event.acceleration.x / 9.8);
   float y_g = (event.acceleration.y / 9.8);
   float z_g = (event.acceleration.z / 9.8);
-
-  dataFile.print(x_g);
-  dataFile.print(",");
-  dataFile.print(y_g);
-  dataFile.print(",");
-  dataFile.print(z_g);
-  dataFile.print(",");
 
 // ENGINE RPM
    // Make local copies of ISR-updated variables safely.
@@ -348,8 +331,6 @@ void loop() {
     engineRPM = (60.0e6f / (float)periodCopy_us) / PULSES_PER_REVOLUTION;
   }
 
-  dataFile.print(engineRPM);
-  dataFile.println(",");
 /*
 // WHEEL RPM
   bool currentState = digitalRead(wheelRpmPin);
@@ -375,6 +356,30 @@ void loop() {
 
   dataFile.println(wheelRPM);
   */
+// PRINT TO RAM (100HZ)
+  if (board_timer - lastPrint >= 10){
+    lastPrint = board_timer;
+    
+    dataFile.print(timeStr);
+    dataFile.print(",");
+    dataFile.print(board_timer);
+    dataFile.print(",");
+
+    dataFile.print(frontPSI_raw);
+    dataFile.print(",");
+    dataFile.print(rearPSI_raw);
+    dataFile.print(",");
+
+    dataFile.print(x_g);
+    dataFile.print(",");
+    dataFile.print(y_g);
+    dataFile.print(",");
+    dataFile.print(z_g);
+    dataFile.print(",");
+
+    dataFile.print(engineRPM);
+    dataFile.println(",");
+  }
 // FLUSH (1Hz)
   if (board_timer - lastFlush >= 1000) {
     dataFile.flush();
