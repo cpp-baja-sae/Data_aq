@@ -65,6 +65,7 @@ const int runNumberAddress = 0;
 char fileName[20];
 int runNumber;
 unsigned long flushTimer = 0;
+unsigned long writeTimer = 0;
 
 volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
@@ -339,7 +340,8 @@ void loop() {
   }
   */
 // FILE WRITE
-  if (board_timer - write_timer >= 10) {
+  if (board_timer - writeTimer >= 10) {
+    writeTimer = board_timer;
   // TIME
     dataFile.print(timeStr);
     dataFile.print(",");
