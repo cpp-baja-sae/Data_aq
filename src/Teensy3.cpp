@@ -426,7 +426,7 @@ void loop() {
       Serial.print(wheelRPMR); */
       Serial.print(",");
       Serial.println(runLoop);
+      runLoop = 0;
     }
-    runLoop = 0;
  
 }
