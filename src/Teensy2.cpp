@@ -217,7 +217,7 @@ void setup() {
   EEPROM.write(runNumberAddress, runNumber);
 
 // SD INIT
-  snprintf(fileName, sizeof(fileName),  "%02d_%02d.csv", month(), day());
+  snprintf(fileName, sizeof(fileName),  "%02d_%02d_%02d.csv", month(), day(), runNumber);
   dataFile = SD.open(fileName, FILE_WRITE);
 
 // FILE HEADER
