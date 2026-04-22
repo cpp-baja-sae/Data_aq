@@ -339,7 +339,7 @@ void loop() {
   }
   */
 // FILE WRITE
-  if (dataFile) {
+  if (board_timer - write_timer >= 10) {
   // TIME
     dataFile.print(timeStr);
     dataFile.print(",");
@@ -368,7 +368,7 @@ void loop() {
     dataFile.print(y_rads);
     dataFile.print(",");
     dataFile.println(z_rads);
-    
+  }    
 /*
   // WHEEL RPM
     dataFile.print(wheelRPML);
@@ -426,6 +426,5 @@ void loop() {
       Serial.println(runLoop);
     }
     runLoop = 0;
-  }
  
 }
