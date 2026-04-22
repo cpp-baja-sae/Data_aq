@@ -356,9 +356,9 @@ void loop() {
 
   dataFile.println(wheelRPM);
   */
-// PRINT TO RAM (100HZ)
-  if (board_timer - lastPrint >= 10){
-    lastPrint = board_timer;
+// WRITE (100HZ)
+  if (board_timer - write_timer >= 10){
+    write_timer = board_timer;
     
     dataFile.print(timeStr);
     dataFile.print(",");
