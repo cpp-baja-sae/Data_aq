@@ -349,7 +349,7 @@ void loop() {
   }
 
   dataFile.print(engineRPM);
-  dataFile.print(",");
+  dataFile.println(",");
 /*
 // WHEEL RPM
   bool currentState = digitalRead(wheelRpmPin);
