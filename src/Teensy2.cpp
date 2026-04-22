@@ -65,6 +65,7 @@ time_t getTeensyTime() {
 }
 */
 unsigned long lastFlush = 0;
+unsigned long writeTimer = 0;
 unsigned int runLoop = 0;
 
 // THROTTLE CONST (DEACTIVATED)
@@ -357,8 +358,8 @@ void loop() {
   dataFile.println(wheelRPM);
   */
 // WRITE (100HZ)
-  if (board_timer - write_timer >= 10){
-    write_timer = board_timer;
+  if (board_timer - writeTimer >= 10){
+    writeTimer = board_timer;
     
     dataFile.print(timeStr);
     dataFile.print(",");
