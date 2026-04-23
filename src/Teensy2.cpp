@@ -399,9 +399,9 @@ void loop() {
     Serial.print(",");
     Serial.print(x_g, 3); 
     Serial.print(",");
-    Serial.print(y_g / 9.8, 3); 
+    Serial.print(y_g, 3); 
     Serial.print(",");
-    Serial.print(z_g / 9.8, 3); 
+    Serial.print(z_g, 3); 
     Serial.print(",");
     Serial.print(engineRPM);     
     Serial.print(",");
