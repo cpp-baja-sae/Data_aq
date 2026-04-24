@@ -269,9 +269,9 @@ void loop() {
     snprintf(currentDateTime, sizeof(currentDateTime),  "%02d/%02d %02d:%02d:%02d", 
     month(), day(), hour(), minute(), second());
 
-    int dtWidth = strlen(dateTimeStr) * 6;
+    int dtWidth = strlen(currentDateTime) * 6;
     display.setCursor(OLED_W - dtWidth - 2, OLED_H - 16);
-    display.print(dateTimeStr);
+    display.print(currentDateTime);
 
     int fileWidth = strlen(fileName) * 6;
     display.setCursor(OLED_W - fileWidth - 2, OLED_H - 8);
