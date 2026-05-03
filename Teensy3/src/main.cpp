@@ -21,11 +21,15 @@ Pin List:
 #include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/TomThumb.h>
 
 // TEMP CONST
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 double currAmbientTempF = 0;
 double currObjectTempF = 0;
+double maxObjTempF = 0;
+double tempThresh = 200; // PLACEHOLDER VALUE - NEED TO WAIT ON ESTEFANIA
+bool flashState = false;
 unsigned long tempTimer = 0;
 
 // SCREEN CONST
@@ -62,7 +66,7 @@ Adafruit_LSM6DSOX gyro;
 const int chipSelect = BUILTIN_SDCARD;
 File dataFile;
 const int runNumberAddress = 0;
-char fileName[20];
+char fileName[25];
 int runNumber;
 unsigned long flushTimer = 0;
 unsigned long writeTimer = 0;
@@ -248,32 +252,73 @@ void loop() {
 
 // TEMP SCREEN (1hz)
   if (board_timer - tempTimer >= 1000) {
+
+    display.setFont();
     tempTimer = board_timer;
     currObjectTempF = mlx.readObjectTempF();
     currAmbientTempF = mlx.readAmbientTempF();
 
+    if (currObjectTempF > maxObjTempF) {
+      maxObjTempF = currObjectTempF;
+    }
+    //Velocity
     display.clearDisplay();
-    display.drawRect(0, 0, OLED_W, OLED_H, SSD1306_WHITE);
-    // Change setCursor values to determine where u want text to appear on the screen
-    display.setCursor(10, 15);
-    display.print("Obj: ");
-    display.print(currObjectTempF, 1);
-    display.print("F");
-    display.setCursor(10, 35);
-    display.print("Amb: ");
-    display.print(currAmbientTempF, 1);
+    display.drawRoundRect(0, 0, 62, 64, 8, SSD1306_WHITE);
+    display.setCursor(6, 24);
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.print("67");
+    display.setCursor(6, 36);
+    display.print("mph");
+
+    // Max Temp
+    display.setCursor(66, 2);
+    display.setTextSize(1);
+    display.print("MAX TEMP:");
+    display.setCursor(66, 12);
+    display.print(maxObjTempF, 1);
     display.print("F");
 
-    // Date and Time + File Name in Bot Right (GPT'D, needs to be tested for positioning)
+    display.drawLine(66, 22, 127, 22, SSD1306_WHITE);
+
+    // Current Temp
+    display.setCursor(66, 26);
+    display.print("CURR TEMP:");
+    display.setCursor(66, 36);
+    display.print(currObjectTempF, 1);
+    display.print("F");
+
+    display.drawLine(66, 46, 127, 46, SSD1306_WHITE);
+
+    // CVT STATUS
+    if (maxObjTempF > tempThresh && flashState) {
+        display.fillRoundRect(66, 48, 62, 10, 4, SSD1306_WHITE);
+        display.setTextColor(SSD1306_BLACK);
+        display.setCursor(68, 50);
+        display.print("! CVT TEMP !");
+        display.setTextColor(SSD1306_WHITE);
+    } else if (maxObjTempF > tempThresh && !flashState) {
+        display.drawRoundRect(66, 48, 62, 10, 4, SSD1306_WHITE);
+        display.setCursor(68, 50);
+        display.print("! OVER TEMP !");
+    } else {
+        display.drawRoundRect(66, 48, 62, 10, 4, SSD1306_WHITE);
+        display.setCursor(68, 50);
+        display.print("STATUS: OK");
+    }
+    flashState = !flashState;
+
+    display.setFont(&TomThumb);
+
     char currentDateTime[25];
     snprintf(currentDateTime, sizeof(currentDateTime),  "%02d/%02d %02d:%02d:%02d", 
     month(), day(), hour(), minute(), second());
 
-    int dtWidth = strlen(currentDateTime) * 6;
+    int dtWidth = strlen(currentDateTime) * 4;
     display.setCursor(OLED_W - dtWidth - 2, OLED_H - 16);
     display.print(currentDateTime);
 
-    int fileWidth = strlen(fileName) * 6;
+    int fileWidth = strlen(fileName) * 4;
     display.setCursor(OLED_W - fileWidth - 2, OLED_H - 8);
     display.print(fileName);
     

@@ -26,7 +26,7 @@ I2C: Accel
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
 File dataFile;
-char fileName[20];
+char fileName[25];
 const int runNumberAddress = 0;
 
 // LED CONST
@@ -217,7 +217,7 @@ void setup() {
   EEPROM.write(runNumberAddress, runNumber);
 
 // SD INIT
-  snprintf(fileName, sizeof(fileName),  "%02d_%02d_%02d.csv", month(), day(), runNumber);
+  snprintf(fileName, sizeof(fileName),  "T2_%02d_%02d_%02d.csv", month(), day(), runNumber);
   dataFile = SD.open(fileName, FILE_WRITE);
 
 // FILE HEADER
@@ -390,21 +390,21 @@ void loop() {
     Serial.println("time,board_timer,rearPSI,frontPSI,accel_x,accel_y,accel_z,engineRPM,wheelRPM,runLoop");
 
     Serial.print(timeStr);       
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(board_timer);   
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(rearPSI_raw);   
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(frontPSI_raw);  
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(x_g, 3); 
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(y_g, 3); 
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(z_g, 3); 
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(engineRPM);     
-    Serial.print(",");
+    Serial.print(", ");
   /*  Serial.print(wheelRPM);      
     Serial.print(","); */
     Serial.println(runLoop);
