@@ -192,7 +192,7 @@ void setup() {
   //Good luck on the car, dont cry too much Luke.
   EEPROM.write(runNumberAddress, runNumber);
 
-  snprintf(fileName, sizeof(fileName),  "%02d_%02d_%02d.csv", month(), day(), runNumber);
+  snprintf(fileName, sizeof(fileName),  "T3_%02d_%02d_%02d.csv", month(), day(), runNumber);
 
   dataFile = SD.open(fileName, FILE_WRITE);
 
