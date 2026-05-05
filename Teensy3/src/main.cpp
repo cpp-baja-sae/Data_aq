@@ -123,6 +123,7 @@ void setup() {
 // INITIALIZE
   Serial.begin(115200);
   Wire.begin();
+  Wire.setClock(10000);
   //Wire1.begin(SLAVE_ADDR); TEENSY - TEENSY
   analogReadResolution(10);
 
