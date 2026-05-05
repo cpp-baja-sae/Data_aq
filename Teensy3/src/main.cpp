@@ -62,6 +62,12 @@ const int steeringPin = 27;
 // ACCEL/GYRO CONST
 Adafruit_LSM6DSOX gyro;
 unsigned long gyroTimer = 0;
+float x_g = 0;
+float y_g = 0;
+float z_g = 0;
+float x_rads = 0;
+float y_rads = 0;
+float z_rads = 0;
 
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
@@ -332,15 +338,14 @@ void loop() {
   sensors_event_t accelEvent;
   sensors_event_t gyroEvent;
   sensors_event_t tempEvent;
-  if (board_timer - gyroTimer >= 1000) {
-    gyroTimer = board_timer;
     gyro.getEvent(&accelEvent, &gyroEvent, &tempEvent);
-    float x_g = accelEvent.acceleration.x / 9.8;
-    float y_g = accelEvent.acceleration.y / 9.8;
-    float z_g = accelEvent.acceleration.z / 9.8;
-    float x_rads = gyroEvent.gyro.x;
-    float y_rads = gyroEvent.gyro.y;
-    float z_rads = gyroEvent.gyro.z;
+  if (board_timer - gyroTimer >= 1000) {
+    x_g = accelEvent.acceleration.x / 9.8;
+    y_g = accelEvent.acceleration.y / 9.8;
+    z_g = accelEvent.acceleration.z / 9.8;
+    x_rads = gyroEvent.gyro.x;
+    y_rads = gyroEvent.gyro.y;
+    z_rads = gyroEvent.gyro.z;
   }
 /*
 // LEFT WHEEL RPM
