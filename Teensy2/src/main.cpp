@@ -112,7 +112,7 @@ const uint32_t TIMEOUT_us = 1000000;
   // If pulses per revolution = 0.5, then
   //   RPM = (60e6 / period_us) / 0.5 = 120e6 / period_us
   // At 50000us, 2400 RPM at 24000us, 5000 RPM. Smaller period = Higher RPM *testing purposes, i set usually 24000 to 33333 for 3600 RPM mapping
-const uint32_t MAX_PERIOD_us = 120000;
+const uint32_t MAX_PERIOD_us = 500000;
 const uint32_t MIN_PERIOD_us = 16000;
 
 float engineRPM = 0.0f;
