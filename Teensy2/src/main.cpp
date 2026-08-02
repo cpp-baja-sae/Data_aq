@@ -8,7 +8,12 @@ Pin List:
 21: ERPM
 23: Rear WPM
 26: Front Brake Pres
-27: Rear Brake Pres
+27: Rear Brake 
+38: Front Left Suspension Travel
+39: Rear Left Suspension Travel
+40: Rear Right Suspension Travel
+41: Front Right Suspension Travel
+
 I2C: Accel
 */
 
@@ -77,6 +82,7 @@ const int brakeFrontPin = 26; //Changed from 41 to match PCB
   // Our Brake Sensors read 0-2000 PSI from .5V -> 4.5V.
 const double V_Logic = 3.3;
 const int ADC_Res = 1023;
+//We will also use the 2 values above for Suspension Pots, as they are both 3.3 V analog-based systems.
 
 const double V_Min = 0.357; // Based off our resistor divider (0.5 * 11/15)
 const double V_Max = 3.214; // Based off our resistor divider (4.5 * 11/15)
@@ -90,6 +96,12 @@ double convertToPSI(int read){
 
   return PSI; 
 }
+
+// SUSPENSION POTS CONST
+const int SuspensionPinFL = 38;
+const int SuspensionPinFR = 41;
+const int SuspensionPinRL = 39;
+const int SuspensionPinRR = 40;
 
 // ACCELEROMETER CONST
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
@@ -172,6 +184,12 @@ void setup() {
   pinMode(brakeRearPin, INPUT);
   pinMode(brakeFrontPin, INPUT);
 
+// SUSPENSION INIT
+  pinMode(SuspensionPinFL, INPUT);
+  pinMode(SuspensionPinFR, INPUT);
+  pinMode(SuspensionPinRL, INPUT);
+  pinMode(SuspensionPinRR, INPUT);
+
 // SD ERROR
   if (!SD.begin(chipSelect)) {
     Serial.println("Error: SD card initialization failed!");
@@ -210,7 +228,11 @@ void setup() {
     Serial.println("Error: ADXL345 not detected.");
     while(1);
   }
-  accel.setDataRate(ADXL345_DATARATE_200_HZ);
+  else{
+    Serial.println("ADXL345 initialized.");
+    accel.setDataRate(ADXL345_DATARATE_200_HZ);
+    accel.setRange(ADXL345_RANGE_16_G);
+  }
 
 // RUN # FROM EEPROM
   int runNumber = EEPROM.read(runNumberAddress);
@@ -232,13 +254,19 @@ void setup() {
 
   // BRAKE PRESSURE
     dataFile.print("PSI_Front,"); //Completely unfiltered data taken at 5ms marks
-    dataFile.print("PSI_Rear,"); // Accounting for noise
+    dataFile.print("PSI_Rear,");
+  
+  // SUSPENSION TRAVEL
+    dataFile.print("FL_Travel_Percent,");
+    dataFile.print("FR_Travel_Percent,");
+    dataFile.print("RL_Travel_Percent,");
+    dataFile.print("RR_Travel_Percent,");
 
   // ACCELEROMETER
     dataFile.print("Accel X g,");
     dataFile.print("Accel Y g,");
     dataFile.print("Accel Z g,");
-    dataFile.println("Eng RPM,");
+    dataFile.println("Eng RPM");
 /*
   // WHEEL RPM
     dataFile.println("Rear RPM");
@@ -300,7 +328,17 @@ void loop() {
 
   double rearPSI_raw = convertToPSI(rearRaw);
   double frontPSI_raw = convertToPSI(frontRaw);
- 
+
+// SUSPENSION TRAVEL
+  int FLRaw = analogRead(SuspensionPinFL);
+  int FRRaw = analogRead(SuspensionPinFR);
+  int RLRaw = analogRead(SuspensionPinRL);
+  int RRRaw = analogRead(SuspensionPinRR);
+
+  int FLTravel = (FLRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
+  int FRTravel = (FRRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
+  int RLTravel = (RLRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
+  int RRTravel = (RRRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
 // ACCELEROMETER
   sensors_event_t event;
   accel.getEvent(&event);
@@ -372,6 +410,15 @@ void loop() {
     dataFile.print(rearPSI_raw);
     dataFile.print(",");
 
+    dataFile.print(FLTravel);
+    dataFile.print(",");
+    dataFile.print(FRTravel);
+    dataFile.print(",");
+    dataFile.print(RLTravel);
+    dataFile.print(",");
+    dataFile.print(RRTravel);
+    dataFile.print(",");
+
     dataFile.print(x_g);
     dataFile.print(",");
     dataFile.print(y_g);
@@ -388,11 +435,19 @@ void loop() {
     lastFlush = board_timer;
 
 // SERIAL DEBUG (1Hz)
-    Serial.println("time,board_timer,rearPSI,frontPSI,accel_x,accel_y,accel_z,engineRPM,wheelRPM,runLoop");
+    Serial.println("time,board_timer, suspensionFL,suspensionFR,suspensionRL,suspensionRR,rearPSI,frontPSI,accel_x,accel_y,accel_z,engineRPM,wheelRPM,runLoop");
 
     Serial.print(timeStr);       
     Serial.print(", ");
     Serial.print(board_timer);   
+    Serial.print(", ");
+    Serial.print(FLTravel);
+    Serial.print(", ");
+    Serial.print(FRTravel);
+    Serial.print(", ");
+    Serial.print(RLTravel);
+    Serial.print(", ");
+    Serial.print(RRTravel);
     Serial.print(", ");
     Serial.print(rearPSI_raw);   
     Serial.print(", ");
