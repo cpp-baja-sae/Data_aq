@@ -261,7 +261,10 @@ void setup() {
     dataFile.print("FR_Travel_Percent,");
     dataFile.print("RL_Travel_Percent,");
     dataFile.print("RR_Travel_Percent,");
-
+    dataFile.print("FL_Travel_Voltage,");
+    dataFile.print("FR_Travel_Voltage,");
+    dataFile.print("RL_Travel_Voltage,");
+    dataFile.print("RR_Travel_Voltage,");
   // ACCELEROMETER
     dataFile.print("Accel X g,");
     dataFile.print("Accel Y g,");
@@ -334,6 +337,11 @@ void loop() {
   int FRRaw = analogRead(SuspensionPinFR);
   int RLRaw = analogRead(SuspensionPinRL);
   int RRRaw = analogRead(SuspensionPinRR);
+
+  int FLRawVoltage = FLRaw * V_Logic / ADC_Res;
+  int FRRawVoltage = FRRaw * V_Logic / ADC_Res;
+  int RLRawVoltage = RLRaw * V_Logic / ADC_Res;
+  int RRRawVoltage = RRRaw * V_Logic / ADC_Res;
 
   int FLTravel = (FLRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
   int FRTravel = (FRRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
@@ -409,7 +417,7 @@ void loop() {
     dataFile.print(",");
     dataFile.print(rearPSI_raw);
     dataFile.print(",");
-
+    
     dataFile.print(FLTravel);
     dataFile.print(",");
     dataFile.print(FRTravel);
@@ -417,6 +425,14 @@ void loop() {
     dataFile.print(RLTravel);
     dataFile.print(",");
     dataFile.print(RRTravel);
+    dataFile.print(",");
+    dataFile.print(FLRawVoltage);
+    dataFile.print(",");
+    dataFile.print(FRRawVoltage);
+    dataFile.print(",");
+    dataFile.print(RLRawVoltage);
+    dataFile.print(",");
+    dataFile.print(RRRawVoltage);
     dataFile.print(",");
 
     dataFile.print(x_g);
@@ -435,11 +451,19 @@ void loop() {
     lastFlush = board_timer;
 
 // SERIAL DEBUG (1Hz)
-    Serial.println("time,board_timer, suspensionFL,suspensionFR,suspensionRL,suspensionRR,rearPSI,frontPSI,accel_x,accel_y,accel_z,engineRPM,wheelRPM,runLoop");
+    Serial.println("time,board_timer, suspensionFLvoltage, suspensionFRvoltage, suspensionRLvoltage, suspensionRRvoltage, suspensionFLpercent, suspensionFRpercent, suspensionRLpercent, suspensionRRpercent, rearPSI, frontPSI, accel_x, accel_y, accel_z, engineRPM, wheelRPM, runLoop");
 
     Serial.print(timeStr);       
     Serial.print(", ");
     Serial.print(board_timer);   
+    Serial.print(", ");
+    Serial.print(FLRawVoltage);
+    Serial.print(", ");
+    Serial.print(FRRawVoltage);
+    Serial.print(", ");
+    Serial.print(RLRawVoltage);
+    Serial.print(", ");
+    Serial.print(RRRawVoltage);
     Serial.print(", ");
     Serial.print(FLTravel);
     Serial.print(", ");
