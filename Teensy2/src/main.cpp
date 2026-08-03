@@ -1,7 +1,5 @@
 /*
-MCU: Teensy 4.1
-PCB: Teensy 2 v2
-4/9/2026 - Kareem + Jason
+Implementing Teensy 2 First, then Teensy 3. 
 
 Pin List:
 1 : LED
@@ -25,6 +23,7 @@ I2C: Accel
 #include <EEPROM.h>
 #include <cmath>
 #include <TimeLib.h>
+#include <FlexCAN_T4.h>
 
 // #define MASTER_ADDR 0x12
 
