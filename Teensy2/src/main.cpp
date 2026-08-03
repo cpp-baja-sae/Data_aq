@@ -26,7 +26,7 @@ I2C: Accel
 #include <cmath>
 #include <TimeLib.h>
 
-// #define MASTER_ADDR 0x12 67
+// #define MASTER_ADDR 0x12
 
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
