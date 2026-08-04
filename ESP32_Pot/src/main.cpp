@@ -19,7 +19,7 @@
 constexpr uint16_t AnalogRes = 4095; // 12-bit ADC resolution
 const int Vref = 3300; // Reference voltage in millivolts
 const int potPin = A0; // Analog pin for the potentiometer
-const uint16_t status = 0x05; // Example status byte 00000101 represents GOOD!
+const uint8_t status = 0x05; // Example status byte 00000101 represents GOOD!
 
 void sendMessage(uint16_t voltage_mV, uint8_t status){
   static uint8_t count = 0;
