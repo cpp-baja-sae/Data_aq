@@ -17,12 +17,9 @@
 #define CAN_TX 2
 #define CAN_RX 3
 
-constexpr uint16_t AnalogRes = 4095; // 12-bit ADC resolution
-const int Vref = 3300; // Reference voltage in millivolts
-
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 
-const uint16_t status = 0x05; // Example status byte 00000101 represents GOOD!
+const uint8_t status = 0x05; // Example status byte 00000101 represents GOOD!
 
 void sendMessage(int8_t ax_g, int8_t ay_g, int8_t az_g, uint8_t status){
   static uint8_t count = 0;
