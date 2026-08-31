@@ -13,8 +13,6 @@
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
 
 constexpr uint32_t POTENTIOMETER_ID = 0x100;
-constexpr uint32_t ACCELEROMETER_ID = 0x101;
-constexpr uint32_t GYROSCOPE_ID = 0x102;
 
 void canDecode(const CAN_message_t &msg) {
   switch (msg.id) {
