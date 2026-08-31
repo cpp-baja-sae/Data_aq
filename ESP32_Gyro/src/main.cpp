@@ -13,14 +13,17 @@
 #include <ESP32-TWAI-CAN.hpp>
 #include <Adafruit_ADXL345_U.h>
 
-
 #define CAN_TX 2
 #define CAN_RX 3
 
+// Initialize your sensor (find the online library, each has a different initialization method)
 Adafruit_LSM6DSOX gyro;
 
+// Ignore this for now
 const uint8_t status = 0x05; // Example status byte 00000101 represents GOOD!
 
+// Replace the parameters in sendMessage(a, b, c, d, e, f, g, h) with the actual values you want to send.
+// If your value is STRICTLY POSITIVE, use uint8_t. This will give you 0-255 range. If your value can be negative, use int8_t. This will give you -128 to 127 range.
 void sendMessage(int8_t ax_g, int8_t ay_g, int8_t az_g, int8_t x_dps, int8_t y_dps, int8_t z_dps, uint8_t status){
   static uint8_t count = 0;
   CanFrame txFrame = {0};
