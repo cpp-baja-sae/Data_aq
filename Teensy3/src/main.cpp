@@ -59,6 +59,10 @@ const int wheelTimeOutR = 500; // ms
 // STEERING CONST
 const int steeringPin = 27;
 
+// LED CONST
+const int LED_PIN = 1;
+bool ledState = false;
+
 // ACCEL/GYRO CONST
 Adafruit_LSM6DSOX gyro;
 unsigned long gyroTimer = 0;
@@ -77,6 +81,7 @@ char fileName[25];
 int runNumber;
 unsigned long flushTimer = 0;
 unsigned long writeTimer = 0;
+unsigned long serialTimer = 0;
 
 volatile uint32_t pendingTime = 0;
 volatile bool timeUpdatePending = false;
@@ -133,6 +138,9 @@ void setup() {
   //Wire1.begin(SLAVE_ADDR); TEENSY - TEENSY
   analogReadResolution(10);
 
+// LED INIT
+  pinMode(LED_PIN, OUTPUT);
+
 // STEERING INIT
   pinMode(steeringPin, INPUT);
 
@@ -146,20 +154,26 @@ void setup() {
 // SCREEN ERROR
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)){
     Serial.println("SSD1306 init failed");
-    while (1);
   }
   
 // SCREEN INIT
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-
-  display.display();
+  if (display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.display();
+  }
 // Teensy Teensy (SLAVE)
    //Wire1.onReceive(onReceiveMaster);
 // TEMP ERROR
   if (!mlx.begin()) {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
+    while (1){
+      digitalWrite(LED_PIN, HIGH);
+      delay(250);
+      digitalWrite(LED_PIN, LOW);
+      delay(250);
+    }
   } else {
     Serial.println("Adafruit MLX90614 Initialized");
   }
@@ -167,7 +181,14 @@ void setup() {
 // ACCEL/GYRO ERROR - Note: The object 'gyro' is declaration of our ACCEL/GYRO sensor don't get confused
   if (!gyro.begin_I2C()) {
     Serial.println("No Gyro sensor detected.");
-  } else {
+    while (1){
+      digitalWrite(LED_PIN, HIGH);
+      delay(250);
+      digitalWrite(LED_PIN, LOW);
+      delay(250);
+    }
+  }
+  else {
     gyro.setAccelRange(LSM6DS_ACCEL_RANGE_16_G);
     gyro.setGyroRange(LSM6DS_GYRO_RANGE_500_DPS);
     gyro.setAccelDataRate(LSM6DS_RATE_208_HZ);
@@ -178,12 +199,6 @@ void setup() {
 // SD ERROR
   if (!SD.begin(chipSelect)) {
     Serial.println("Error: SD card initialization failed!");
-    while (1) {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(250);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(250);
-    }
   }
 // RTC INIT
   setSyncProvider(getTeensyTime); // Sets Time.lib to use RTC
@@ -230,12 +245,6 @@ void setup() {
   }
   else{
     Serial.println("Error: Could not open the file for writing.");
-    while (1) {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(250);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(250);
-    }
   }
 
 //
@@ -246,7 +255,7 @@ void setup() {
 void loop() {
 
 // RUN INDICATOR
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_PIN, HIGH);
   runLoop++;
 // TIME STAMP
   unsigned long board_timer = millis();
@@ -260,8 +269,6 @@ void loop() {
 
 // TEMP SCREEN (1hz)
   if (board_timer - tempTimer >= 1000) {
-
-    display.setFont();
     tempTimer = board_timer;
     currObjectTempF = mlx.readObjectTempF();
     currAmbientTempF = mlx.readAmbientTempF();
@@ -269,51 +276,55 @@ void loop() {
     if (currObjectTempF > maxObjTempF) {
       maxObjTempF = currObjectTempF;
     }
-    //Velocity
-    display.clearDisplay();
-    display.drawRoundRect(0, 0, 62, 64, 8, SSD1306_WHITE);
-    display.setCursor(6, 24);
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.print("67");
-    display.setCursor(6, 36);
-    display.print("mph");
+    if (display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+      display.setFont();
+      //Velocity
+      display.clearDisplay();
+      display.drawRoundRect(0, 0, 62, 64, 8, SSD1306_WHITE);
+      display.setCursor(6, 24);
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_WHITE);
+      display.print("67");
+      display.setCursor(6, 36);
+      display.print("mph");
 
-    // Max Temp
-    display.setCursor(66, 2);
-    display.setTextSize(1);
-    display.print("MAX TEMP:");
-    display.setCursor(66, 12);
-    display.print(maxObjTempF, 1);
-    display.print("F");
+      // Max Temp
+      display.setCursor(66, 2);
+      display.setTextSize(1);
+      display.print("MAX TEMP:");
+      display.setCursor(66, 12);
+      display.print(maxObjTempF, 1);
+      display.print("F");
 
-    display.drawLine(66, 22, 127, 22, SSD1306_WHITE);
+      display.drawLine(66, 22, 127, 22, SSD1306_WHITE);
 
-    // Current Temp
-    display.setCursor(66, 26);
-    display.print("CURR TEMP:");
-    display.setCursor(66, 36);
-    display.print(currObjectTempF, 1);
-    display.print("F");
+      // Current Temp
+      display.setCursor(66, 26);
+      display.print("CURR TEMP:");
+      display.setCursor(66, 36);
+      display.print(currObjectTempF, 1);
+      display.print("F");
 
-    display.drawLine(66, 46, 127, 46, SSD1306_WHITE);
+      display.drawLine(66, 46, 127, 46, SSD1306_WHITE);
 
-    // CVT STATUS
-    if (maxObjTempF > tempThresh && flashState) {
+      // CVT STATUS
+      if (maxObjTempF > tempThresh && flashState) {
         display.fillRoundRect(66, 48, 62, 10, 4, SSD1306_WHITE);
         display.setTextColor(SSD1306_BLACK);
         display.setCursor(68, 50);
         display.print("! CVT TEMP !");
-        display.setTextColor(SSD1306_WHITE);
-    } else if (maxObjTempF > tempThresh && !flashState) {
+        display.setTextColor(SSD1306_WHITE); 
+      }
+      else if (maxObjTempF > tempThresh && !flashState) {
         display.drawRoundRect(66, 48, 62, 10, 4, SSD1306_WHITE);
         display.setCursor(68, 50);
         display.print("! OVER TEMP !");
-    } else {
+      }
+      else {
         display.drawRoundRect(66, 48, 62, 10, 4, SSD1306_WHITE);
         display.setCursor(68, 50);
         display.print("STATUS: OK");
-    }
+      }
     flashState = !flashState;
 
     display.setFont(&TomThumb);
@@ -332,9 +343,10 @@ void loop() {
     
     display.display();
   }
+    }
+    
 
 // ACCEL/GYRO
-
   sensors_event_t accelEvent;
   sensors_event_t gyroEvent;
   sensors_event_t tempEvent;
@@ -394,7 +406,7 @@ void loop() {
   }
   */
 // FILE WRITE
-  if (board_timer - writeTimer >= 10) {
+  if (dataFile && (board_timer - writeTimer >= 10)) {
     writeTimer = board_timer;
   // TIME
     dataFile.print(timeStr);
@@ -432,10 +444,11 @@ void loop() {
     dataFile.println(wheelRPMR); */
 
 // FLUSH TIMER
-    if (board_timer - flushTimer >= 1000) {
+    if (dataFile && (board_timer - flushTimer >= 1000)) {
       flushTimer = board_timer;
       dataFile.flush();
-
+    }
+    if (board_timer - serialTimer >= 1000){
       //SERIAL DEBUG (1 SEC)
 
       Serial.print("hours:minutes:seconds,");
@@ -480,6 +493,10 @@ void loop() {
       Serial.print(wheelRPMR); */
       Serial.print(",");
       Serial.println(runLoop);
+      if (!dataFile) {
+        digitalWrite(LED_PIN, ledState);
+        ledState = !ledState;
+      }
       runLoop = 0;
     }
  

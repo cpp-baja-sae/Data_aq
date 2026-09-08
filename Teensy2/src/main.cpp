@@ -35,7 +35,8 @@ char fileName[25];
 const int runNumberAddress = 0;
 
 // LED CONST
-const int LED_PIN = LED_BUILTIN;
+const int LED_PIN = 1;
+bool ledState = false;
 
 // TIME CONST
 #define TIME_HEADER  "T"   // Header tag for serial time sync message
@@ -194,12 +195,6 @@ void setup() {
 // SD ERROR
   if (!SD.begin(chipSelect)) {
     Serial.println("Error: SD card initialization failed!");
-    while (1) {
-      digitalWrite(LED_PIN, HIGH);
-      delay(250);
-      digitalWrite(LED_PIN, LOW);
-      delay(250);
-    }
   }
 
 // RTC INIT
@@ -426,6 +421,8 @@ void loop() {
 
     dataFile.print(engineRPM);
     dataFile.println(",");
+
+    digitalWrite(LED_PIN, HIGH);
   }
 // FLUSH (1Hz)
   if (dataFile && (board_timer - lastFlush >= 1000)) {
@@ -472,7 +469,10 @@ void loop() {
   /*  Serial.print(wheelRPM);      
     Serial.print(","); */
     Serial.println(runLoop);
-
+    if (!dataFile) {
+        digitalWrite(LED_PIN, ledState);
+        ledState = !ledState;
+      }
 // RUN LOOP RESET
   runLoop = 0;
 
