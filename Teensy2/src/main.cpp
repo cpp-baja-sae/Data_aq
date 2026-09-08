@@ -70,6 +70,7 @@ time_t getTeensyTime() {
 }
 */
 unsigned long lastFlush = 0;
+unsigned long lastSerialPrint = 0;
 unsigned long writeTimer = 0;
 unsigned int runLoop = 0;
 
@@ -280,13 +281,6 @@ void setup() {
     digitalWrite(LED_PIN, LOW);
   } else {
     Serial.println("Error: Could not open the file for writing.");
-    while (1) {
-      digitalWrite(LED_PIN, HIGH);
-      delay(250);
-  //Love you guys, gonna miss you :(
-      digitalWrite(LED_PIN, LOW);
-      delay(250);
-    }
   }
 }
 void loop() {
@@ -294,18 +288,6 @@ void loop() {
 // RUN INDICATOR 
   digitalWrite(LED_BUILTIN, HIGH);
   runLoop++;
-  
-// FILE ERROR
-  if (!dataFile) {
-    Serial.println("Error: dataFile invalid.");
-    while (1) {
-      digitalWrite(LED_PIN, HIGH);
-      delay(250);
-      digitalWrite(LED_PIN, LOW);
-      delay(250);
-    }
-  }
-
 
 // TIME STAMP
   unsigned long board_timer = millis();
@@ -405,7 +387,7 @@ void loop() {
   dataFile.println(wheelRPM);
   */
 // WRITE (100HZ)
-  if (board_timer - writeTimer >= 10){
+  if ((dataFile) && (board_timer - writeTimer >= 10)){
     writeTimer = board_timer;
     
     dataFile.print(timeStr);
@@ -446,10 +428,12 @@ void loop() {
     dataFile.println(",");
   }
 // FLUSH (1Hz)
-  if (board_timer - lastFlush >= 1000) {
+  if (dataFile && (board_timer - lastFlush >= 1000)) {
     dataFile.flush();
     lastFlush = board_timer;
-
+  }
+  if (board_timer - lastSerialPrint >= 1000) {
+    lastSerialPrint = board_timer;
 // SERIAL DEBUG (1Hz)
     Serial.println("time,board_timer, suspensionFLvoltage, suspensionFRvoltage, suspensionRLvoltage, suspensionRRvoltage, suspensionFLpercent, suspensionFRpercent, suspensionRLpercent, suspensionRRpercent, rearPSI, frontPSI, accel_x, accel_y, accel_z, engineRPM, wheelRPM, runLoop");
 
