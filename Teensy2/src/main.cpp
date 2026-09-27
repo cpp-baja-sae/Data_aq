@@ -28,6 +28,12 @@ I2C: Accel
 
 // #define MASTER_ADDR 0x12
 
+// Check if sensor is alive
+bool sensorHere(uint8_t addr) {
+  Wire.beginTransmission(addr);
+  return Wire.endTransmission() == 0;
+}
+
 // SD CONST
 const int chipSelect = BUILTIN_SDCARD;
 File dataFile;
@@ -214,7 +220,6 @@ void setup() {
 // RTC ERROR
   if (timeStatus()!= timeSet) {
     Serial.println("Unable to sync with the RTC");
-    while(1);
   } else {
     Serial.println("RTC has set the system time");
   }
@@ -222,7 +227,6 @@ void setup() {
 // ACCEL ERROR
   if (!accel.begin()) {
     Serial.println("Error: ADXL345 not detected.");
-    while(1);
   }
   else{
     Serial.println("ADXL345 initialized.");
@@ -325,12 +329,15 @@ void loop() {
   int RLTravel = (RLRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
   int RRTravel = (RRRaw)/ADC_Res * 100; // Convert to percentage, i.e. 0-100% travel
 // ACCELEROMETER
-  sensors_event_t event;
-  accel.getEvent(&event);
-
-  float x_g = (event.acceleration.x / 9.8);
-  float y_g = (event.acceleration.y / 9.8);
-  float z_g = (event.acceleration.z / 9.8);
+  bool accelOK = sensorHere(0x53);
+  float x_g = 0, y_g = 0, z_g = 0;
+  if (accelOK) {
+    sensors_event_t event;
+    accel.getEvent(&event);
+    x_g = event.acceleration.x / 9.8;
+    y_g = event.acceleration.y / 9.8;
+    z_g = event.acceleration.z / 9.8;
+  }
 
 // ENGINE RPM
    // Make local copies of ISR-updated variables safely.
@@ -412,12 +419,13 @@ void loop() {
     dataFile.print(RRRawVoltage);
     dataFile.print(",");
 
-    dataFile.print(x_g);
-    dataFile.print(",");
-    dataFile.print(y_g);
-    dataFile.print(",");
-    dataFile.print(z_g);
-    dataFile.print(",");
+    if (accelOK) {
+      dataFile.print(x_g); dataFile.print(",");
+      dataFile.print(y_g); dataFile.print(",");
+      dataFile.print(z_g); dataFile.print(",");
+    } else {
+      dataFile.print("error,error,error,");
+    }
 
     dataFile.print(engineRPM);
     dataFile.println(",");
