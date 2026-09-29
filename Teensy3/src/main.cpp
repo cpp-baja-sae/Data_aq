@@ -12,13 +12,6 @@ Pin List:
   : 
 */
 
-// Checks if a sensor exists
-bool sensorHere(uint8_t addr) {
-  Wire.beginTransmission(addr);
-  return Wire.endTransmission() == 0;
-}
-bool mlxOK = false, gyroOK = false;
-
 #include <TimeLib.h>
 #include <SD.h>
 #include <Adafruit_MLX90614.h>
@@ -29,6 +22,13 @@ bool mlxOK = false, gyroOK = false;
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Fonts/TomThumb.h>
+
+// Checks if a sensor exists
+bool sensorHere(uint8_t addr) {
+  Wire.beginTransmission(addr);
+  return Wire.endTransmission() == 0;
+}
+bool mlxOK = false, gyroOK = false;
 
 // TEMP CONST
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
@@ -460,32 +460,31 @@ gyroOK = sensorHere(0x6A) || sensorHere(0x6B);
       Serial.print("FR RPM,"); */
       Serial.println("runLoops");
       
-      Serial.print(timeStr);
-      Serial.print(",");
-      Serial.print(board_timer);
-      Serial.print(",");
-      Serial.print(currObjectTempF);
-      Serial.print(",");
-      Serial.print(currAmbientTempF);
-      Serial.print(",");
-      Serial.print(angle);
-      Serial.print(",");
-      Serial.print(x_g);
-      Serial.print(",");
-      Serial.print(y_g);
-      Serial.print(",");
-      Serial.print(z_g);
-      Serial.print(",");
-      Serial.print(x_rads);
-      Serial.print(",");
-      Serial.print(y_rads);
-      Serial.print(",");
-      Serial.print(z_rads);
+      Serial.print(timeStr);    Serial.print(",");
+      Serial.print(board_timer);    Serial.print(",");
+
+      if (mlxOK) {
+      Serial.print(currObjectTempF);  Serial.print(",");
+      Serial.print(currAmbientTempF); Serial.print(",");
+    } else {
+      Serial.print("error,error,");
+    }
+      Serial.print(angle);    Serial.print(",");
+
+      if (gyroOK) {
+      Serial.print(x_g);    Serial.print(",");
+      Serial.print(y_g);    Serial.print(",");
+      Serial.print(z_g);    Serial.print(",");
+      Serial.print(x_rads); Serial.print(",");
+      Serial.print(y_rads); Serial.print(",");
+      Serial.print(z_rads); Serial.print(",");
+    } else {
+      Serial.print("error,error,error,error,error,error,");
+    }
      /* Serial.print(",");
       Serial.print(wheelRPML);
       Serial.print(",");
       Serial.print(wheelRPMR); */
-      Serial.print(",");
       Serial.println(runLoop);
       if (!dataFile) {
         digitalWrite(LED_PIN, ledState);
