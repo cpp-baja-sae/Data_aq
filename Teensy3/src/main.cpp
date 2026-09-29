@@ -12,6 +12,13 @@ Pin List:
   : 
 */
 
+// Checks if a sensor exists
+bool sensorHere(uint8_t addr) {
+  Wire.beginTransmission(addr);
+  return Wire.endTransmission() == 0;
+}
+bool mlxOK = false, gyroOK = false;
+
 #include <TimeLib.h>
 #include <SD.h>
 #include <Adafruit_MLX90614.h>
@@ -168,12 +175,6 @@ void setup() {
 // TEMP ERROR
   if (!mlx.begin()) {
     Serial.println("Error connecting to MLX sensor. Check wiring.");
-    while (1){
-      digitalWrite(LED_PIN, HIGH);
-      delay(250);
-      digitalWrite(LED_PIN, LOW);
-      delay(250);
-    }
   } else {
     Serial.println("Adafruit MLX90614 Initialized");
   }
@@ -181,12 +182,6 @@ void setup() {
 // ACCEL/GYRO ERROR - Note: The object 'gyro' is declaration of our ACCEL/GYRO sensor don't get confused
   if (!gyro.begin_I2C()) {
     Serial.println("No Gyro sensor detected.");
-    while (1){
-      digitalWrite(LED_PIN, HIGH);
-      delay(250);
-      digitalWrite(LED_PIN, LOW);
-      delay(250);
-    }
   }
   else {
     gyro.setAccelRange(LSM6DS_ACCEL_RANGE_16_G);
@@ -269,14 +264,13 @@ void loop() {
 
 // TEMP SCREEN (1hz)
   if (board_timer - tempTimer >= 1000) {
-    tempTimer = board_timer;
-    currObjectTempF = mlx.readObjectTempF();
-    currAmbientTempF = mlx.readAmbientTempF();
-
-    if (currObjectTempF > maxObjTempF) {
-      maxObjTempF = currObjectTempF;
+    mlxOK = sensorHere(0x5A);
+    if (mlxOK) {
+      currObjectTempF = mlx.readObjectTempF();
+      currAmbientTempF = mlx.readAmbientTempF();
+      if (currObjectTempF > maxObjTempF) maxObjTempF = currObjectTempF;
     }
-    if (display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+    if (sensorHere(OLED_ADDR)) {
       display.setFont();
       //Velocity
       display.clearDisplay();
@@ -347,11 +341,10 @@ void loop() {
     
 
 // ACCEL/GYRO
-  sensors_event_t accelEvent;
-  sensors_event_t gyroEvent;
-  sensors_event_t tempEvent;
+gyroOK = sensorHere(0x6A) || sensorHere(0x6B);
+  if (gyroOK) {
+    sensors_event_t accelEvent, gyroEvent, tempEvent;
     gyro.getEvent(&accelEvent, &gyroEvent, &tempEvent);
-  if (board_timer - gyroTimer >= 1000) {
     x_g = accelEvent.acceleration.x / 9.8;
     y_g = accelEvent.acceleration.y / 9.8;
     z_g = accelEvent.acceleration.z / 9.8;
@@ -415,27 +408,28 @@ void loop() {
     dataFile.print(",");
 
   // TEMP
-    dataFile.print(currObjectTempF);
-    dataFile.print(",");
-    dataFile.print(currAmbientTempF);
-    dataFile.print(",");
+    if (mlxOK) {
+      dataFile.print(currObjectTempF);  dataFile.print(",");
+      dataFile.print(currAmbientTempF); dataFile.print(",");
+    } else {
+      dataFile.print("error,error,");
+    }
 
   // STEERING ANGLE
     dataFile.print(angle);
     dataFile.print(",");
 
   // ACCEL
-    dataFile.print(x_g);
-    dataFile.print(",");
-    dataFile.print(y_g);
-    dataFile.print(",");
-    dataFile.print(z_g);
-    dataFile.print(",");
-    dataFile.print(x_rads);
-    dataFile.print(",");
-    dataFile.print(y_rads);
-    dataFile.print(",");
-    dataFile.println(z_rads);
+    if (gyroOK) {
+      dataFile.print(x_g);    dataFile.print(",");
+      dataFile.print(y_g);    dataFile.print(",");
+      dataFile.print(z_g);    dataFile.print(",");
+      dataFile.print(x_rads); dataFile.print(",");
+      dataFile.print(y_rads); dataFile.print(",");
+      dataFile.println(z_rads);
+    } else {
+      dataFile.println("error,error,error,error,error,error");
+    }
   }    
 /*
   // WHEEL RPM
