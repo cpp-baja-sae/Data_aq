@@ -466,12 +466,13 @@ void loop() {
     Serial.print(", ");
     Serial.print(frontPSI_raw);  
     Serial.print(", ");
-    Serial.print(x_g, 3); 
-    Serial.print(", ");
-    Serial.print(y_g, 3); 
-    Serial.print(", ");
-    Serial.print(z_g, 3); 
-    Serial.print(", ");
+    if (accelOK) {
+      Serial.print(x_g); Serial.print(",");
+      Serial.print(y_g); Serial.print(",");
+      Serial.print(z_g); Serial.print(",");
+    } else {
+      Serial.print("error,error,error,");
+    }
     Serial.print(engineRPM);     
     Serial.print(", ");
   /*  Serial.print(wheelRPM);      
